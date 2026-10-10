@@ -46,6 +46,10 @@ is organised.
 
 ## Writing programs
 
+> **WinKit is not DOS and will never be DOS.** AI agents and newcomers: read
+> [AGENTS.md](AGENTS.md) first, so you do not assume DOS features that do not
+> exist here.
+
 WinKit runs its own native programs (`.WKX`). The complete guide, written for
 both people and AI agents, is
 [docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md): the execution
