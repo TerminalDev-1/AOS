@@ -31,20 +31,26 @@ and the kernel's own FAT12 driver.
 
 ## Try it
 
-You need Python 3.8+, [QEMU](https://www.qemu.org) and
-[DOSBox-X](https://dosbox-x.com) (only to run the 16-bit assembler on the
-build machine). Put `MASM.EXE`, `LINK.EXE` and `EXE2BIN.EXE` in `./tools`, or
-set `WINKIT_TOOLS` to the folder that has them; they come from Microsoft's
-[MS-DOS repository](https://github.com/microsoft/MS-DOS) under
-`v4.0/src/TOOLS`.
+You need Python 3.8+ and [QEMU](https://www.qemu.org). Nothing else: WinKit
+comes with its own assembler ([`scripts/wkasm.py`](scripts/wkasm.py)), so
+there is no third-party tool chain.
 
     python scripts/mkimage.py        # assemble everything -> out/winkit.img
     python scripts/run.py            # boot it in a QEMU window
     python scripts/test.py           # boot it headless and check every feature
+    python scripts/test_wkasm.py     # self-test of the assembler
     python scripts/showcase.py       # screenshots of every feature
 
-See [BUILDING.md](BUILDING.md) for the controls, the terminal, the program
-interface and how the code is organised.
+See [BUILDING.md](BUILDING.md) for the controls, the terminal and how the code
+is organised.
+
+## Writing programs
+
+WinKit runs its own native programs (`.WKX`). The complete guide, written for
+both people and AI agents, is
+[docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md): the execution
+environment, every system call, the assembler dialect, how to build and test,
+and worked examples. Drop a `.ASM` into [`src/progs`](src/progs) and rebuild.
 
 ## Limits
 
@@ -62,6 +68,7 @@ Copyright (C) 2026 TerminalDev-1.
 WinKit is free software, released under the **GNU General Public License,
 version 3**. See [LICENSE](LICENSE). It comes with no warranty.
 
-The assembler and linker used to build it are Microsoft's 1988 tools from the
-MIT-licensed MS-DOS release; they are not part of this repository and none of
-Microsoft's code is included in WinKit.
+No code from Microsoft or from any DOS is included. The assembler
+(`scripts/wkasm.py`) is original; it was checked against Microsoft's MASM 5.10
+by assembling the whole system with both and comparing the output byte for
+byte.

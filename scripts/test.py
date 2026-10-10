@@ -133,6 +133,17 @@ def main():
               "Hello from a native WinKit program!" in out)
         out = run("count")
         check("program output and loop work", "1 2 3 4 5" in out and "20" in out)
+        out = run("fib")
+        check("FIB: subroutines and division work",
+              "0 1 1 2 3 5 8 13 21 34 55 89 144" in out)
+        out = run("hi")
+        check("quick-start program prints", "Hi from WinKit!" in out)
+        m.type("cls"); m.key("ret"); time.sleep(.3)
+        m.type("reverse"); m.key("ret"); time.sleep(.6)
+        m.type("winkit"); m.key("ret"); time.sleep(.6)
+        out = term_text()
+        check("AH=3 reads keys: REVERSE prints the line backwards",
+              "Type a line: winkit" in out and "tikniw" in out)
         run("echo winkit works > T.TXT")
         out = run("type t.txt")
         check("echo > FILE creates a file", "winkit works" in out)

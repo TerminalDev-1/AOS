@@ -2,6 +2,7 @@
 
     python scripts/mkimage.py       # assemble everything -> out/winkit.img
     python scripts/test.py          # boot it in QEMU and check every feature
+    python scripts/test_wkasm.py    # self-test of the assembler
     python scripts/run.py           # boot it in a QEMU window yourself
     python scripts/showcase.py      # screenshots + overview in out/screens/
 
@@ -37,7 +38,7 @@ loop and `INCLUDE`s the rest.
 | `STORAGE.INC` | the Files list and `NOTES.TXT` |
 | `TERM.INC` | the WinKit terminal, its commands, and the INT 80h program interface |
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
-| `progs/*.ASM` | the sample programs `HELLO`, `COUNT`, `KEYS` |
+| `progs/*.ASM` | sample programs: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE` |
 
 The desktop uses VGA mode 12h (640x480) with its own 16-colour palette and
 writes straight to planar video memory. PS/2 mouse input comes from the BIOS
@@ -79,34 +80,30 @@ Open it from the Start menu or with F6.
 
 ### Native programs (`.WKX`)
 
-A program is a flat binary assembled with `ORG 100h`. It is loaded to
-`3000:0100` with every segment register set to `3000h`; a `RET` or `AH=0`
-returns to the terminal. Services use `INT 80h`:
+A program is a flat binary assembled with `ORG 100h`, loaded to
+`3000:0100`, using four `INT 80h` services (exit, print character, print
+string, read key). Drop a new `.ASM` into `src/progs/` and rebuild;
+`mkimage.py` assembles every program there and puts it on the disk.
 
-| AH | Service |
-|---|---|
-| 0 | exit |
-| 1 | print the character in AL |
-| 2 | print the NUL-terminated string at DS:DX |
-| 3 | wait for a key; returns AL = ASCII, AH = scan code |
+The full reference, with the memory map, the assembler dialect, testing
+recipes and examples, is [docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
 
-Drop a new `.ASM` into `src/progs/` and rebuild; `mkimage.py` assembles every
-program there and puts it on the disk.
+## The assembler
 
-## Tool chain
+[`scripts/wkasm.py`](scripts/wkasm.py) is WinKit's own 8086 assembler: one
+Python file with no dependencies. It reads the MASM-style dialect the sources
+are written in (macros, `INCLUDE`, `EQU`, `PROC`, `DUP`, expressions, typed
+variables) and writes flat binaries. It picks the same instruction encodings
+as MASM 5.10 does, and the kernel, boot sector and every sample program were
+verified to be **byte-identical** to MASM's output when it was written.
+`scripts/test_wkasm.py` checks known encodings and error handling.
+
+## Requirements
 
 | Tool | Used for |
 |---|---|
-| Python 3.8+ | build, image and test scripts |
-| MASM 5.10, LINK, EXE2BIN | assembling (16-bit DOS programs; see below) |
-| [DOSBox-X](https://dosbox-x.com) | running those tools on the build machine |
+| Python 3.8+ | assembler, image builder and test scripts |
 | [QEMU](https://www.qemu.org) (`qemu-system-i386`) | booting and testing |
 
-MASM, LINK and EXE2BIN are not in this repository. Copy `MASM.EXE`,
-`LINK.EXE` and `EXE2BIN.EXE` from `v4.0/src/TOOLS` in
-<https://github.com/microsoft/MS-DOS> to `./tools`, or point `WINKIT_TOOLS` at
-them. DOSBox-X is found on `PATH`, in `C:\DOSBox-X`, or via `DOSBOX_X=`; QEMU
-on `PATH`, in `C:\Program Files\qemu`, or via `QEMU=`.
-
-Verified on Windows 11 with Python 3.13, DOSBox-X and QEMU. Not run on Linux
-or macOS.
+QEMU is found on `PATH`, in `C:\Program Files\qemu`, or via `QEMU=`.
+Verified on Windows 11 with Python 3.13 and QEMU. Not run on Linux or macOS.
