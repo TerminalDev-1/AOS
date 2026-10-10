@@ -1,0 +1,114 @@
+; STORAGE.INC - the Files list and NOTES.TXT, on top of FS.INC.
+
+; Fill files[]: 14 bytes per entry (attribute, 13-byte "NAME.EXT",0).
+refresh_files PROC NEAR
+    push es
+    mov ax,FSSEG
+    mov es,ax
+    mov bx,ROOT_OFS
+    mov cx,fs_rootent
+    mov filecount,0
+    mov filepage,0
+rf_next:
+    mov al,es:[bx]
+    or al,al
+    jz rf_done
+    cmp al,0e5h
+    je rf_skip
+    mov al,es:[bx+11]
+    test al,8                          ; volume label
+    jnz rf_skip
+    cmp al,0fh                         ; long-name fragment
+    je rf_skip
+    cmp filecount,224
+    jae rf_done
+    push ax
+    push cx
+    mov ax,filecount
+    mov cx,14
+    mul cx
+    add ax,OFFSET files
+    mov di,ax
+    pop cx
+    pop ax
+    mov [di],al                        ; attribute
+    inc di
+    call fs_unpack
+    inc filecount
+rf_skip:
+    add bx,32
+    dec cx
+    jnz rf_next
+rf_done:
+    pop es
+    mov dirty,1
+    ret
+refresh_files ENDP
+
+next_files PROC NEAR
+    mov ax,filepage
+    add ax,20
+    cmp ax,filecount
+    jae nf_done
+    mov filepage,ax
+    mov dirty,1
+nf_done:
+    ret
+next_files ENDP
+
+previous_files PROC NEAR
+    cmp filepage,0
+    je pf_done
+    sub filepage,20
+    mov dirty,1
+pf_done:
+    ret
+previous_files ENDP
+
+; NOTES.TXT -> note[] / notelen (at most 240 bytes).
+load_note PROC NEAR
+    push es
+    mov si,OFFSET notefile
+    call file_read
+    jc ln_done
+    cmp ax,240
+    jbe ln_size
+    mov ax,240
+ln_size:
+    mov notelen,ax
+    mov cx,ax
+    push ds
+    mov ax,FSSEG
+    mov ds,ax
+    mov si,BUF_OFS
+    push cs
+    pop es
+    mov di,OFFSET note
+    rep movsb
+    pop ds
+ln_done:
+    pop es
+    ret
+load_note ENDP
+
+save_note PROC NEAR
+    push es
+    mov ax,FSSEG
+    mov es,ax
+    mov di,BUF_OFS
+    mov si,OFFSET note
+    mov cx,notelen
+    rep movsb
+    pop es
+    mov si,OFFSET notefile
+    mov cx,notelen
+    call file_write
+    jc sn_error
+    mov status,OFFSET savedtext
+    mov dirty,1
+    ret
+sn_error:
+    mov status,OFFSET errortext
+    mov dirty,1
+    ret
+save_note ENDP

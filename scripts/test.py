@@ -1,0 +1,180 @@
+"""Exercise WinKit in QEMU: boot, desktop, filesystem, terminal, programs.
+
+There is no DOS in the image, so everything below is the system's own code:
+the desktop, the FAT12 driver and the WinKit terminal.
+"""
+import struct
+import time
+from pathlib import Path
+from qemu import Machine
+
+ROOT = Path(__file__).resolve().parent.parent
+SHOTS = ROOT / "out" / "screens" / "gui"
+
+
+def main():
+    SHOTS.mkdir(parents=True, exist_ok=True)
+    checks = 0
+    with Machine(str(ROOT / "out" / "winkit.img")) as m:
+        memory = Path(m.tmp) / "ram.bin"
+
+        def wait_gui():
+            deadline = time.time() + 30
+            while m.video_mode() != 0x12:
+                if time.time() > deadline:
+                    raise AssertionError("desktop did not start")
+                time.sleep(.2)
+            time.sleep(1)
+
+        def locate():
+            m.qmp("pmemsave", val=0, size=640 * 1024, filename=str(memory))
+            ram = memory.read_bytes()
+            state = ram.rfind(b"V4GUIstate") + 10
+            term = ram.rfind(b"WKTERMBUF") + 9
+            assert state > 10 and term > 9, "telemetry not found"
+            return state, term
+
+        wait_gui()
+        state_addr, term_addr = locate()
+
+        def state():
+            m.qmp("pmemsave", val=state_addr, size=9, filename=str(memory))
+            return struct.unpack("<5B2H", memory.read_bytes())
+
+        def term_text():
+            m.qmp("pmemsave", val=term_addr, size=16 * 52, filename=str(memory))
+            raw = memory.read_bytes()
+            rows = [raw[i * 52:(i + 1) * 52].split(b"\0")[0].decode("latin-1")
+                    for i in range(16)]
+            return "\n".join(rows)
+
+        def check(name, condition):
+            nonlocal checks
+            assert condition, name
+            checks += 1
+            print(f"[PASS] {name}", flush=True)
+
+        def shot(name):
+            time.sleep(1)                # settle, then freeze for the capture
+            m.qmp("stop")
+            m.screenshot(str(SHOTS / (name + ".png")))
+            m.qmp("cont")
+
+        def mouse(x, y, down=None):
+            s = state()
+            m.qmp("input-send-event", events=[
+                {"type": "rel", "data": {"axis": "x", "value": x - s[5]}},
+                {"type": "rel", "data": {"axis": "y", "value": y - s[6]}}])
+            time.sleep(.2)
+            if down is not None:
+                m.qmp("input-send-event", events=[
+                    {"type": "btn", "data": {"button": "left", "down": down}}])
+                time.sleep(.2)
+
+        def click(x, y):
+            mouse(x, y, True)
+            mouse(x, y, False)
+            time.sleep(.5)
+
+        def run(command, wait=.6):
+            m.type("cls")                # so only this command's output shows
+            m.key("ret")
+            time.sleep(.3)
+            m.type(command)
+            m.key("ret")
+            time.sleep(wait)
+            return term_text()
+
+        # ---- boot and desktop ----
+        check("boots straight into the VGA desktop", state()[0] == 0)
+        check("PS/2 mouse enabled without any driver", state()[4] == 1)
+        shot("01-welcome")
+        click(330, 320)                  # OK on the welcome dialog
+        check("mouse enters desktop", state()[0] == 1)
+        click(30, 466)                   # Start button
+        click(100, 314)                  # Files in the Start menu
+        check("Files opens from the Start menu", state()[1] == 1)
+        m.key("pgdn")
+        shot("02-files-page-two")
+        m.key("pgup")
+        m.key("f2")
+        m.type("Assembly GUI notes")
+        m.key("f4")
+        time.sleep(1.5)
+        check("Files and Notes coexist", state()[1:3] == (3, 2))
+        shot("03-notes")
+        mouse(260, 60, True)             # drag Notes by its title bar
+        mouse(308, 92)
+        mouse(308, 92, False)
+        shot("04-dragged")
+        click(578, 96)                   # its close button
+        check("mouse closes dragged Notes window", state()[1] == 1)
+        m.key("f3")
+        check("System window opens", state()[1] == 5)
+        shot("05-system")
+        m.key("f10")
+        check("Shut Down dialog is graphical", state()[0] == 2)
+        shot("06-shutdown")
+        m.key("esc")
+        check("Escape cancels Shut Down", state()[0] == 1)
+
+        # ---- the WinKit terminal ----
+        m.key("f6")
+        check("F6 opens WinKit", state()[1] == 13 and state()[2] == 4)
+        out = run("dir")
+        check("dir lists the volume",
+              "README.TXT" in out and "HELLO.WKX" in out and "NOTES.TXT" in out)
+        shot("07-terminal-dir")
+        out = run("type notes.txt")
+        check("a note saved by the desktop reads back through the filesystem",
+              "Assembly GUI notes" in out)
+        out = run("hello")
+        check("native program runs and prints",
+              "Hello from a native WinKit program!" in out)
+        out = run("count")
+        check("program output and loop work", "1 2 3 4 5" in out and "20" in out)
+        run("echo winkit works > T.TXT")
+        out = run("type t.txt")
+        check("echo > FILE creates a file", "winkit works" in out)
+        run("ren t.txt u.txt")
+        out = run("dir")
+        check("ren renames", "U.TXT" in out and "T.TXT" not in out)
+        run("copy u.txt v.txt")
+        out = run("dir")
+        check("copy duplicates", "V.TXT" in out and "U.TXT" in out)
+        run("del u.txt")
+        run("del v.txt")
+        out = run("dir")
+        check("del removes files", "U.TXT" not in out and "V.TXT" not in out)
+        out = run("bogus")
+        check("unknown command is reported", "Bad command" in out)
+        out = run("ver")
+        check("ver identifies WinKit", "WinKit" in out)
+        shot("08-terminal-final")
+        out = run("dir")
+        m.type("cls")
+        m.key("ret")
+        time.sleep(.5)
+        text = term_text()
+        check("cls clears the screen",
+              text.splitlines()[0].startswith("winkit>") and "README" not in text)
+
+        # ---- restart: the saved file must survive a reboot ----
+        m.key("f10")
+        click(310, 226)                  # "Restart"
+        click(256, 332)                  # OK
+        time.sleep(2)
+        wait_gui()
+        state_addr, term_addr = locate()
+        check("Restart reboots into the desktop", state()[0] == 0)
+        click(330, 320)
+        m.key("f6")
+        out = run("type notes.txt")
+        check("files survive the reboot", "Assembly GUI notes" in out)
+        shot("09-after-reboot")
+
+    print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
+
+
+if __name__ == "__main__":
+    main()
