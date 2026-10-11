@@ -58,7 +58,7 @@ Do this for **every feature or fix, without being asked**. Do not stop to ask
 whether to commit or push; the owner has already said yes.
 
 1. Build: `python scripts/mkimage.py`.
-2. Test: `python scripts/test.py` (about three minutes) and
+2. Test: `python scripts/test.py` (about five minutes) and
    `python scripts/test_wkasm.py`. Add or
    update a check in `scripts/test.py` for what you changed.
 3. If a test fails, fix it first. Never commit or push a failing tree.

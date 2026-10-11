@@ -80,7 +80,9 @@ and worked examples. Drop a `.ASM` into [`src/progs`](src/progs) and rebuild.
   reset.
 - Existing DOS programs do not run: they need DOS's INT 21h services, which
   WinKit deliberately does not provide.
-- Tested in QEMU only, not on physical hardware.
+- Tested in QEMU only, not on physical hardware. The image is prepared to
+  boot a real PC from a USB stick or floppy (legacy BIOS); see "Running on
+  a real PC" in [BUILDING.md](BUILDING.md). Nobody has tried it yet.
 
 ## License
 

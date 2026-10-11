@@ -1,7 +1,13 @@
 ; SETUP.WKX - installs WinKit on the hard disk. It copies the disk WinKit
-; was started from, sector by sector, to the first hard disk (BIOS drive
-; 80h) and adjusts the boot sector to that disk, so the machine then starts
-; WinKit without the floppy. Everything on the hard disk is overwritten.
+; was started from, sector by sector, to a hard disk and adjusts the boot
+; sector to that disk, so the machine then starts WinKit from it.
+; Everything on that hard disk is overwritten.
+;
+; Which hard disk: started from a floppy, the first one (BIOS drive 80h).
+; Started from a hard disk or a USB stick, which the BIOS also numbers as
+; a hard disk, the next one after it (81h); with no such disk there is
+; nothing to install on. Hard disks are read and written by sector number
+; (INT 13h AH=42h/43h) when the BIOS can, like the kernel does.
 ; When the copy is done the Install button becomes Restart, which starts
 ; the machine from the hard disk straight away.
 ;
@@ -145,11 +151,12 @@ bh_try:
     mov ax,0201h                       ; read one sector
     mov bx,7c00h
     mov cx,1                           ; cylinder 0, sector 1
-    mov dx,HARDDISK                    ; head 0
+    xor dh,dh                          ; head 0
+    mov dl,dstdrv
     int 13h
     jnc bh_read
     xor ax,ax
-    mov dl,HARDDISK
+    mov dl,dstdrv
     int 13h
     dec di
     jnz bh_try
@@ -164,7 +171,7 @@ bh_go:
     mov ss,ax
     mov sp,7c00h
     sti
-    mov dl,HARDDISK
+    mov dl,dstdrv
     db 0eah                            ; jmp 0000:7C00
     dw 7c00h,0
 
@@ -182,19 +189,41 @@ probe:
     mov sheads,ax
     mov ax,es:[7c13h]
     mov total,ax
+    mov al,es:[7c25h]
+    mov slba,al
     pop es
+    mov pk_seg,ds
     mov status,OFFSET t_fromhd
-    cmp srcdrv,HARDDISK
-    jae pr_done
+    cmp srcdrv,HARDDISK                ; started from a hard disk or stick:
+    jb pr_which                        ; the target is the one after it
+    mov al,srcdrv
+    inc al
+    mov dstdrv,al
+    jmp pr_look
+pr_which:
     mov status,OFFSET t_nodisk
+pr_look:
+    mov ah,41h                         ; can it be used by sector number?
+    mov bx,55aah
+    mov dl,dstdrv
+    int 13h
+    jc pr_shape
+    cmp bx,0aa55h
+    jne pr_shape
+    test cl,1
+    jz pr_shape
+    mov dlba,1
+pr_shape:
     push es
     mov ah,8                           ; hard disk geometry
-    mov dl,HARDDISK
+    mov dl,dstdrv
     int 13h
     pop es
     jc pr_done
-    or dl,dl                           ; number of hard disks
-    jz pr_done
+    mov al,dstdrv                      ; DL = number of hard disks
+    sub al,HARDDISK
+    cmp dl,al
+    jbe pr_done
     mov al,cl
     and al,63
     xor ah,ah
@@ -215,6 +244,8 @@ probe:
     mul dheads
     mul bx                             ; DX:AX = sectors on the disk
     mov status,OFFSET t_small
+    cmp dlba,0                         ; its shape may not say its size
+    jne pr_ok
     or dx,dx
     jnz pr_ok
     cmp ax,total
@@ -247,6 +278,8 @@ co_next:
     mov g_spt,ax
     mov ax,sheads
     mov g_heads,ax
+    mov al,slba
+    mov g_lba,al
     mov g_op,2
     call disk_io
     jnc co_read
@@ -260,9 +293,13 @@ co_read:
     mov [bx+18h],ax
     mov ax,dheads
     mov [bx+1ah],ax
-    mov byte ptr [bx+24h],HARDDISK
+    mov al,dstdrv
+    mov [bx+24h],al
 co_write:
-    mov g_drv,HARDDISK                 ; write to the hard disk
+    mov al,dstdrv                      ; write to the hard disk
+    mov g_drv,al
+    mov al,dlba
+    mov g_lba,al
     mov ax,dspt
     mov g_spt,ax
     mov ax,dheads
@@ -281,7 +318,9 @@ co_wrote:
 co_more:
     mov ax,lba
     cmp ax,total
-    jb co_next
+    jae co_all
+    jmp co_next
+co_all:
     call bar
     mov status,OFFSET t_done
     ret
@@ -304,9 +343,31 @@ ba_draw:
     int 80h
     ret
 
-; Reads (g_op = 2) or writes (3) sector lba of drive g_drv, whose shape is
-; g_spt / g_heads, at heap. CF set when it failed three times.
+; Reads (g_op = 2) or writes (3) sector lba of drive g_drv at heap: by
+; sector number when g_lba is set, else through its shape g_spt / g_heads.
+; CF set when it failed three times.
 disk_io:
+    cmp g_lba,0
+    je di_chs
+    mov di,3
+di_ltry:
+    mov ax,lba                         ; by sector number
+    mov pk_lba,ax
+    mov si,OFFSET packet
+    mov dl,g_drv
+    mov ah,g_op
+    add ah,40h                         ; 42h read, 43h write
+    xor al,al
+    int 13h
+    jnc di_ok
+    xor ax,ax
+    mov dl,g_drv
+    int 13h
+    dec di
+    jnz di_ltry
+    stc
+    ret
+di_chs:
     mov di,3
 di_try:
     mov ax,lba
@@ -363,7 +424,16 @@ g_spt   dw 0                           ; what disk_io works on
 g_heads dw 0
 g_drv   db 0
 g_op    db 0
-srcdrv  db 0
+g_lba   db 0
+srcdrv  db 0                           ; the drive WinKit was started from
+dstdrv  db HARDDISK                    ; the hard disk to install on
+slba    db 0                           ; each: use it by sector number
+dlba    db 0
+packet  db 10h,0                       ; INT 13h AH=42h/43h: one sector
+        dw 1
+        dw OFFSET heap
+pk_seg  dw 0
+pk_lba  dw 0,0,0,0
 can     db 0                           ; installing is possible
 armed   db 0                           ; Install was pressed once
 done    db 0                           ; installed: the button restarts
@@ -371,7 +441,7 @@ done    db 0                           ; installed: the button restarts
 t_title   db 'WinKit Setup',0
 t_head    db 'Install WinKit on the hard disk',0
 t_line1   db 'This copies the whole system from this disk to',0
-t_line2   db 'the first hard disk, so it starts without it.',0
+t_line2   db 'the hard disk, so the PC starts WinKit from it.',0
 t_warn    db 'Everything on the hard disk will be erased.',0
 t_install db 'Install',0
 t_close   db 'Close',0
@@ -382,7 +452,7 @@ t_copying db 'Copying...',0
 t_done    db 'Done. Press Restart to boot the hard disk.',0
 t_nodisk  db 'No hard disk was found.',0
 t_small   db 'The hard disk is too small (1.44 MB needed).',0
-t_fromhd  db 'WinKit is already running from the hard disk.',0
+t_fromhd  db 'Running from the hard disk; no other disk found.',0
 t_rerr    db 'Cannot read the WinKit disk. Not installed.',0
 t_werr    db 'Cannot write to the hard disk. Not installed.',0
 

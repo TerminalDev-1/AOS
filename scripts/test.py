@@ -367,6 +367,59 @@ def main():
               "disk", gui()[0] == 0 and "HD.TXT" in run("dir"))
     hda.unlink()
 
+    # ---- the image itself on other boot media, as on a real PC ----
+    # Written to a hard disk or a USB stick, the BIOS starts it as drive 80h
+    # with a shape that is not a floppy's (and that it cannot always report),
+    # so the boot sector and the kernel must read it by sector number.
+    usb = ("-usb", "-drive", f"if=none,id=stick,format=raw,file={image}",
+           "-device", "usb-storage,drive=stick,bootindex=0")
+    for media, options in (("a hard disk", {"hda": image, "boot": "c"}),
+                           ("a USB stick", {"extra": usb})):
+        with Machine(None, **options) as m:
+            memory = Path(m.tmp) / "ram.bin"
+            wait_gui()
+            state_addr, term_addr = locate()
+            m.qmp("pmemsave", val=0x7c25, size=1, filename=str(memory))
+            by_sector = memory.read_bytes()[0]
+            m.key("ret")
+            m.key("f6")
+            out = run("dir", wait=2)
+            check(f"the image starts from {media} and reads its files",
+                  boot_drive() == 0x80 and by_sector == 1 and
+                  "WKSTORE.WKX" in out and "KB free" in out)
+
+    # ---- the real-PC route: start from a USB stick, install on the disk ----
+    hda = ROOT / "out" / "test-hda.img"
+    with open(hda, "wb") as fh:
+        fh.truncate(16 * 1024 * 1024)
+    with Machine(None, hda=str(hda), extra=usb) as m:
+        memory = Path(m.tmp) / "ram.bin"
+        wait_gui()
+        state_addr, term_addr = locate()
+        check("started from the stick, which the BIOS numbers 80h",
+              boot_drive() == 0x80)
+        m.key("ret")
+        m.key("f6")
+        m.type("setup")
+        m.key("ret")
+        time.sleep(2)
+        for _ in range(3):                   # Install, confirm, Restart
+            m.key("ret")
+        deadline = time.time() + 240
+        while boot_drive() != 0x81:
+            assert time.time() < deadline, "no restart from the hard disk"
+            time.sleep(1)
+        time.sleep(2)
+        wait_gui()
+        state_addr, term_addr = locate()
+        m.key("ret")
+        m.key("f6")
+        out = run("dir", wait=2)
+        check("Setup started from a USB stick installs on the PC's hard "
+              "disk (81h) and restarts from it",
+              boot_drive() == 0x81 and "SETUP.WKX" in out)
+    hda.unlink()
+
     print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
 
 

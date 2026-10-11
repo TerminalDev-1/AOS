@@ -12,6 +12,8 @@
 ; the 8086 instruction set (and wkasm) does not have, so the few 386
 ; instructions are written as bytes. That is safe here: the port only
 ; answers on a machine that emulates it, and such a machine is not an 8086.
+; On real hardware the processor is checked first and the port, if nothing
+; is there, simply does not answer.
 ;
 ; The PS/2 mouse stays on: every absolute report still arrives with a PS/2
 ; packet, which is what makes the BIOS call mouse_callback (INPUT.INC). The
@@ -38,8 +40,42 @@ VMM_CALL MACRO cmd
     db 66h,0edh                        ; in eax,dx
 ENDM
 
+; ZF set when the processor is a 386 or later. An 8086 keeps flag bits
+; 12-15 set, a 286 in real mode keeps them clear; a 386 lets them change.
+cpu_386 PROC NEAR
+    pushf
+    pushf
+    pop ax
+    and ax,0fffh
+    push ax
+    popf
+    pushf
+    pop ax
+    and ax,0f000h
+    cmp ax,0f000h
+    je c3_no                           ; 8086 / 8088
+    mov ax,0f000h
+    push ax
+    popf
+    pushf
+    pop ax
+    and ax,0f000h
+    jz c3_no                           ; 286
+    popf
+    xor ax,ax                          ; ZF set
+    ret
+c3_no:
+    popf
+    mov ax,1
+    or ax,ax                           ; ZF clear
+    ret
+cpu_386 ENDP
+
 ; Look for the interface and ask for absolute positions. Sets vmmouse.
+; Does nothing on a processor older than a 386, which could not run it.
 vmm_init PROC NEAR
+    call cpu_386
+    L_JNE vmi_old
     db 66h,60h                         ; pushad
     VMM_EBX 0,0
     VMM_CALL VMM_VERSION               ; EBX = the magic number, if present
@@ -60,6 +96,7 @@ vmm_init PROC NEAR
     mov vmmouse,1
 vmi_done:
     db 66h,61h                         ; popad
+vmi_old:
     ret
 vmm_init ENDP
 

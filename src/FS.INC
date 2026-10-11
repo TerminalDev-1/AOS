@@ -15,12 +15,46 @@ BUF_OFS   EQU 3000h
 BUF_MAX   EQU 0d000h                   ; bytes available at BUF_OFS
 
 ; Read (fs_op = 2) or write (fs_op = 3) one sector: AX = LBA, ES:BX = buffer.
-; CF set on failure after three retries.
+; CF set on failure after three retries. A hard disk is addressed by
+; sector number when the BIOS can (fs_lba, decided by the boot sector);
+; a floppy, by cylinder, head and sector.
 disk_rw PROC NEAR
     push ax
     push cx
     push dx
     push di
+    cmp fs_lba,0
+    je dr_chs
+    push si
+    mov di,3
+dr_ltry:
+    mov fp_lba,ax
+    mov fp_off,bx
+    mov fp_seg,es
+    push ax
+    mov si,OFFSET fs_packet
+    mov dl,fs_drive
+    mov ah,fs_op
+    add ah,40h                         ; 42h read, 43h write
+    xor al,al
+    int 13h
+    pop ax
+    jnc dr_lok
+    push ax
+    xor ax,ax
+    mov dl,fs_drive
+    int 13h                            ; reset and retry
+    pop ax
+    dec di
+    jnz dr_ltry
+    pop si
+    stc
+    jmp dr_out
+dr_lok:
+    pop si
+    clc
+    jmp dr_out
+dr_chs:
     mov di,3
 dr_try:
     push ax
@@ -64,6 +98,8 @@ fs_init PROC NEAR
     mov es,ax
     mov al,es:[7c24h]
     mov fs_drive,al
+    mov al,es:[7c25h]
+    mov fs_lba,al
     mov ax,es:[7c18h]
     mov fs_spt,ax
     mov ax,es:[7c1ah]

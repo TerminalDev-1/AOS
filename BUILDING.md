@@ -9,6 +9,55 @@
 
 Add `--snapshot` to `run.py` to discard disk writes when QEMU exits.
 
+## Running on a real PC
+
+**Status: prepared for it, not tested on it.** Everything here has only
+ever run in QEMU. The steps below are what should work on a PC with a
+legacy BIOS (or UEFI with CSM / "legacy boot" switched on); WinKit cannot
+boot through UEFI alone. Treat the first try as an experiment.
+
+`out/winkit.img` is the whole system, 1.44 MB. Write it to the start of a
+USB stick or a floppy, byte for byte; **this erases the stick**:
+
+* Windows: [Rufus](https://rufus.ie) (pick the image, choose "DD Image"
+  mode when asked) or Win32 Disk Imager.
+* Linux / macOS: `sudo dd if=out/winkit.img of=/dev/sdX bs=512` with the
+  right device for `sdX`, then `sync`.
+* A real 3.5" floppy: the same commands with the floppy device.
+
+Then pick the stick in the PC's boot menu. From there `SETUP` can install
+it on the PC's first hard disk, which erases that disk completely.
+
+What was done so that this can work, and is tested in QEMU:
+
+* **Disk access.** A floppy's 18 sectors x 2 heads is in the boot sector.
+  A BIOS that starts the image from a USB stick or hard disk gives it
+  some other shape, and cannot always say which (QEMU's BIOS uses 90
+  sectors per track for a 1.44 MB stick, more than the 63 it can
+  report). So the boot sector, the kernel and Setup address a hard disk
+  by sector number, with the `INT 13h` extensions (`AH=41h`-`43h`), and
+  fall back to asking for the shape (`AH=08h`) only on a BIOS without
+  them. The test boots the same image as a hard disk and as a USB stick.
+* **Setup from a stick.** The BIOS numbers the stick it started from as
+  the first hard disk (80h), so Setup then installs on the next one
+  (81h), the PC's own disk, and its Restart button starts from that. The
+  test does exactly this with an emulated stick and disk.
+* **Plain BIOS services only.** Disk, keyboard, clock and the PS/2 mouse
+  all go through the BIOS. With no PS/2 mouse (or USB-mouse emulation by
+  the BIOS) the desktop still works: arrow keys move the pointer and
+  Space clicks.
+* **The QEMU drivers stay out of the way.** The display driver only acts
+  when QEMU's video card answers, so a real VGA card stays in standard
+  640 x 480; the mouse driver checks for a 386 and a card that answers.
+* **Processor.** Everything else is 8086 code, so any PC processor will do.
+
+What may still go wrong on real hardware: BIOSes differ in how they treat
+a USB stick without a partition table (some refuse to boot it; try the
+"USB-FDD" or "USB-HDD" setting if there is one), in their PS/2 mouse
+support, and in how fast disk reads are. The Store needs a real serial
+port (COM1) and a second machine running `wkstore.py` over a null-modem
+cable, which has not been tried.
+
 ## The widescreen display driver
 
 Under QEMU the desktop is **848 x 480** (16:9), so it fills a widescreen
@@ -80,8 +129,11 @@ order, so with the floppy in it starts the floppy again.
   WinKit disk and nothing else can share it.
 * The volume on the hard disk is still the 1.44 MB FAT12 volume; the rest
   of the disk is not used.
-* Setup refuses when there is no hard disk, when it is smaller than
-  1.44 MB, or when WinKit is already running from the hard disk.
+* Started from a floppy, Setup installs on the first hard disk. Started
+  from a hard disk or a USB stick, it installs on the next hard disk
+  after that one, so look at what is in the machine before confirming.
+* Setup refuses when there is no such hard disk or when it is smaller
+  than 1.44 MB.
 * Like everything here this is tested in QEMU only. Do not point it at a
   real disk you care about.
 

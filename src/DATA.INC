@@ -182,6 +182,12 @@ clockdirty db 0
 
 ; ---- FAT12 volume (see FS.INC) ----
 fs_drive db 0
+fs_lba db 0                            ; read by sector number (AH=42h/43h)
+fs_packet db 10h,0                     ; the request for that: one sector
+        dw 1
+fp_off dw 0
+fp_seg dw 0
+fp_lba dw 0,0,0,0
 fs_op db 2
 fs_f db 0
 fs_nfat db 2
