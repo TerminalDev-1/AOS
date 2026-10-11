@@ -3,6 +3,11 @@
 
 Usage: python scripts/run.py [--image out/winkit.img] [--hda disk.img]
                             [--boot a|c] [--snapshot] [--store]
+                            [--fullscreen]
+
+The WinKit screen (640x480) is scaled to fill the QEMU window, whatever
+size you make it; --fullscreen starts on the whole monitor (Ctrl+Alt+F
+leaves full screen, Ctrl+Alt+G releases the mouse).
 
 --hda attaches a hard disk image (created empty, 16 MB, if the file does
 not exist) so that Start > Programs > SETUP can install WinKit on it.
@@ -36,9 +41,14 @@ def main():
                     help="serve the programs in store/ to wkstore")
     ap.add_argument("--store-port", type=int, default=wkstore.PORT,
                     help="TCP port used for the serial link to the store")
+    ap.add_argument("--fullscreen", action="store_true",
+                    help="fill the whole monitor (Ctrl+Alt+F to leave)")
     args = ap.parse_args()
+    display = "gtk,zoom-to-fit=on"         # scale the screen to the window
+    if args.fullscreen:
+        display += ",full-screen=on,show-menubar=off"
     cmd = [find_qemu(), "-M", "pc", "-cpu", "486", "-m", "4", "-net", "none",
-           "-boot", args.boot]
+           "-boot", args.boot, "-display", display]
     if args.boot == "c":                   # from the hard disk: no floppy
         if not args.hda:
             ap.error("--boot c needs --hda")
