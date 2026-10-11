@@ -48,6 +48,23 @@ Things that are *not* DOS even though they may look like it:
 * **Do not create branches.** Commit directly on `main`. This overrides any
   default you have about branching before a commit.
 
+## Workflow: test, commit, push
+
+Do this for **every feature or fix, without being asked**. Do not stop to ask
+whether to commit or push; the owner has already said yes.
+
+1. Build: `python scripts/mkimage.py`.
+2. Test: `python scripts/test.py` and `python scripts/test_wkasm.py`. Add or
+   update a check in `scripts/test.py` for what you changed.
+3. If a test fails, fix it first. Never commit or push a failing tree.
+4. Update the docs that the change makes wrong (this file, `README.md`,
+   `BUILDING.md`, `docs/WKX-PROGRAMMING.md`).
+5. Commit on `main`, one commit per feature, with a message that says what
+   changed and why.
+6. Push: `git push origin main`.
+
+Then report what was done and the test result.
+
 ## Where the facts are
 
 | Read this | For |
