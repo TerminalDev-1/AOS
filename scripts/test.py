@@ -4,9 +4,12 @@ There is no DOS in the image, so everything below is the system's own code:
 the desktop, the FAT12 driver and the WinKit terminal.
 """
 import struct
+import threading
 import time
 from pathlib import Path
-from qemu import Machine
+
+import wkstore
+from qemu import Machine, free_port
 
 ROOT = Path(__file__).resolve().parent.parent
 SHOTS = ROOT / "out" / "screens" / "gui"
@@ -15,7 +18,12 @@ SHOTS = ROOT / "out" / "screens" / "gui"
 def main():
     SHOTS.mkdir(parents=True, exist_ok=True)
     checks = 0
-    with Machine(str(ROOT / "out" / "winkit.img")) as m:
+    store_port = free_port()             # the store server, on the serial port
+    serial = ("-serial", f"tcp:127.0.0.1:{store_port},server=on,wait=off")
+    with Machine(str(ROOT / "out" / "winkit.img"), extra=serial) as m:
+        threading.Thread(target=wkstore.serve, args=(store_port,),
+                         kwargs={"log": lambda text: None},
+                         daemon=True).start()
         memory = Path(m.tmp) / "ram.bin"
 
         def wait_gui():
@@ -92,7 +100,7 @@ def main():
         click(330, 320)                  # OK on the welcome dialog
         check("mouse enters desktop", state()[0] == 1)
         click(30, 466)                   # Start button
-        click(100, 314)                  # Files in the Start menu
+        click(100, 286)                  # Files in the Start menu
         check("Files opens from the Start menu", state()[1] == 1)
         m.key("pgdn")
         shot("02-files-page-two")
@@ -161,7 +169,36 @@ def main():
         check("unknown command is reported", "Bad command" in out)
         out = run("ver")
         check("ver identifies WinKit", "WinKit" in out)
-        shot("08-terminal-final")
+
+        # ---- the WinKit Store: a download over the serial port ----
+        # WKSTORE.WKX draws its own window (INT 80h 10h..14h) at 112,72; its
+        # client area starts 3,21 inside that.
+        m.key("f7")
+        time.sleep(2)
+        click(115 + 100, 93 + 43 + 18 + 5)   # second row of the list: DICE
+        click(115 + 40, 93 + 14)             # the Install button
+        time.sleep(2)
+        shot("08-store")
+        m.key("up")                          # first row: CLOCK
+        m.key("ret")                         # Enter installs too
+        time.sleep(2)
+        click(112 + 416 - 13, 72 + 11)       # the window's close button
+        time.sleep(1)
+        check("the Store closes and the desktop is back",
+              state()[1] == 13 and state()[2] == 4)
+        out = run("dir")
+        check("the Store installs the program clicked with the mouse",
+              "DICE.WKX" in out)
+        check("the Store installs the program picked with the keyboard",
+              "CLOCK.WKX" in out)
+        out = run("clock")
+        check("the installed program runs", "Date: 1988-11-30" in out)
+        run("window")                        # a program with its own window
+        click(115 + 60, 93 + 30)             # its Quit button
+        time.sleep(1)
+        check("a windowed program gets its click and returns",
+              "The window is closed." in term_text())
+        shot("09-terminal-final")
         out = run("dir")
         m.type("cls")
         m.key("ret")
@@ -182,7 +219,7 @@ def main():
         m.key("f6")
         out = run("type notes.txt")
         check("files survive the reboot", "Assembly GUI notes" in out)
-        shot("09-after-reboot")
+        shot("10-after-reboot")
 
     print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
 

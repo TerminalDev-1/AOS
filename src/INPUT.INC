@@ -65,6 +65,8 @@ do_action PROC NEAR
     L_JA da_other
     jmp open_window                    ; 1..4 are window numbers
 da_other:
+    cmp al,A_STORE
+    L_JE run_store
     cmp al,A_SHUTDOWN
     L_JNE da_enter
     mov viewstate,V_SHUTDOWN
@@ -112,7 +114,7 @@ da_done:
     ret
 do_action ENDP
 
-; Start menu item under the pointer: AL = 0..3 or 0FFh.
+; Start menu item under the pointer: AL = 0..5 or 0FFh.
 menu_item_at PROC NEAR
     push bx
     mov ax,mx
@@ -121,7 +123,7 @@ menu_item_at PROC NEAR
     cmp ax,175
     jae mi_none
     mov ax,my
-    cmp ax,300
+    cmp ax,272
     jb mi_none
     cmp ax,449
     jae mi_none
@@ -129,10 +131,10 @@ menu_item_at PROC NEAR
     jb mi_items
     cmp ax,421
     jb mi_none
-    mov al,4
+    mov al,5
     jmp mi_out
 mi_items:
-    sub ax,300
+    sub ax,272
     mov bl,28
     div bl
     jmp mi_out
@@ -155,9 +157,13 @@ menu_click PROC NEAR
     call menu_item_at
     cmp al,0ffh
     je mcl_done
-    cmp al,4
+    cmp al,5
     je mcl_shut
     inc al                             ; Files / Notes / System / WinKit
+    cmp al,5
+    jne mcl_go
+    mov al,A_STORE
+mcl_go:
     jmp do_action
 mcl_shut:
     mov al,A_SHUTDOWN
@@ -241,7 +247,7 @@ ic_loop:
     call pt_in
     jc ic_hit
     inc fk
-    cmp fk,4
+    cmp fk,5
     jb ic_loop
     mov iconsel,0
     ret
@@ -253,7 +259,7 @@ ic_hit:
     pop es
     mov bx,ax
     mov cl,byte ptr fk
-    inc cl                             ; icon number 1..3
+    inc cl                             ; icon number 1..5
     cmp cl,iconsel
     jne ic_select
     sub ax,lastclk
@@ -261,7 +267,11 @@ ic_hit:
     ja ic_select
     mov iconsel,0
     mov al,cl
-    jmp open_window
+    cmp al,5
+    jne ic_open
+    mov al,A_STORE
+ic_open:
+    jmp do_action
 ic_select:
     mov iconsel,cl
     mov lastclk,bx
@@ -457,6 +467,11 @@ ki_notclose:
     mov al,4
     jmp open_window
 ki_notf6:
+    cmp ah,41h                         ; F7 opens the Store
+    L_JNE ki_notf7
+    mov al,A_STORE
+    jmp do_action
+ki_notf7:
     cmp active,4                       ; the terminal has the keyboard
     L_JNE ki_notterm
     test opened,8

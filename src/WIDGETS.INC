@@ -367,8 +367,8 @@ ch_done:
 chrome ENDP
 
 ; ---- icons: icx/icy = top-left, AL = kind ----
-; 1 folder, 2 document, 3 computer, 4 power, 5 terminal (16x16);
-; 11 folder, 12 document, 13 computer, 14 terminal (32x32).
+; 1 folder, 2 document, 3 computer, 4 power, 5 terminal, 6 store (16x16);
+; 11 folder, 12 document, 13 computer, 14 terminal, 15 store (32x32).
 draw_icon PROC NEAR
     push ax
     cmp al,1
@@ -437,6 +437,10 @@ di_k12:
 di_k13:
     cmp al,14
     L_JE di_k14
+    cmp al,15
+    L_JE di_k15
+    cmp al,6
+    L_JE di_k6
     IBOX 1,1,30,22,K_BLACK
     IBOX 2,2,28,20,K_FACE
     IBOX 4,4,24,14,K_SHADOW
@@ -454,6 +458,29 @@ di_k14:
     IBOX 9,13,3,3,K_FACE
     IBOX 6,16,3,3,K_FACE
     IBOX 14,19,8,3,K_FACE
+    jmp di_done
+di_k15:                                ; a bag with a "download" arrow
+    IBOX 11,2,10,2,K_BLACK
+    IBOX 11,2,2,8,K_BLACK
+    IBOX 19,2,2,8,K_BLACK
+    IBOX 4,9,24,21,K_BLACK
+    IBOX 5,10,22,19,K_ORANGE
+    IBOX 5,10,22,2,K_YELLOW
+    IBOX 14,14,4,7,K_WHITE
+    IBOX 10,21,12,2,K_WHITE
+    IBOX 12,23,8,2,K_WHITE
+    IBOX 14,25,4,2,K_WHITE
+    jmp di_done
+di_k6:
+    IBOX 5,1,6,1,K_BLACK
+    IBOX 5,1,1,4,K_BLACK
+    IBOX 10,1,1,4,K_BLACK
+    IBOX 2,4,12,11,K_BLACK
+    IBOX 3,5,10,9,K_ORANGE
+    IBOX 7,6,2,4,K_WHITE
+    IBOX 5,10,6,1,K_WHITE
+    IBOX 6,11,4,1,K_WHITE
+    IBOX 7,12,2,1,K_WHITE
 di_done:
     pop ax
     ret

@@ -207,6 +207,9 @@ dirn dw 0
 kss dw 0
 ksp dw 0
 termdirty db 0
+guiopen db 0                           ; a program has its window up
+guititle db 42 dup (0)
+storefile db 'WKSTORE.WKX',0
 
 cmdtab dw OFFSET c_help,OFFSET cmd_help
        dw OFFSET c_dir,OFFSET cmd_dir
@@ -308,6 +311,7 @@ notes_tab:
 
 titleptr dw OFFSET ttl_files,OFFSET ttl_notes,OFFSET ttl_system,OFFSET ttl_term
 iconlbl dw OFFSET lbl_files,OFFSET lbl_notes,OFFSET lbl_system,OFFSET lbl_term
+        dw OFFSET lbl_store
 
 ; ---- palette: 16 attribute registers + overscan, then 16 DAC triplets ----
 attrmap db 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,0
@@ -343,14 +347,17 @@ lbl_save db 'Save  F4',0
 lbl_r0 db 'Shut down',0
 lbl_r1 db 'Restart',0
 lbl_term db 'WinKit',0
+lbl_store db 'Store',0
 mn_files db 'Files',0
 mn_notes db 'Notes',0
 mn_system db 'System',0
 mn_term db 'WinKit',0
+mn_store db 'Store',0
 mn_shut db 'Shut Down...',0
 banner db 'V4.0',0
 logo db 'V4',0
-menuptr dw OFFSET mn_files,OFFSET mn_notes,OFFSET mn_system,OFFSET mn_term,OFFSET mn_shut
+menuptr dw OFFSET mn_files,OFFSET mn_notes,OFFSET mn_system,OFFSET mn_term
+        dw OFFSET mn_store,OFFSET mn_shut
 
 ttl_files db 'Files - boot disk',0
 ttl_notes db 'Notes - NOTES.TXT',0

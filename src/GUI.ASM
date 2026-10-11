@@ -17,6 +17,7 @@
 ;   FS.INC       FAT12 driver over BIOS INT 13h
 ;   STORAGE.INC  Files list and NOTES.TXT
 ;   TERM.INC     the WinKit terminal and INT 80h program interface
+;   PGUI.INC     INT 80h window, drawing and events for programs
 ;   POWER.INC    restart, power off
 CODE SEGMENT PARA PUBLIC 'CODE'
 ASSUME CS:CODE, DS:CODE
@@ -155,6 +156,7 @@ INCLUDE INPUT.INC
 INCLUDE FS.INC
 INCLUDE STORAGE.INC
 INCLUDE TERM.INC
+INCLUDE PGUI.INC
 INCLUDE POWER.INC
 
 CODE ENDS

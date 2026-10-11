@@ -780,11 +780,25 @@ cr_ext:
     jnz cr_ext
 cr_load:
     mov si,OFFSET arg1
-    call file_read
+    call run_file
     jc cr_bad
+    mov termdirty,1
+    ret
+cr_bad:
+    mov si,OFFSET t_badcmd
+    call term_puts
+    call term_crlf
+    ret
+cmd_run ENDP
+
+; SI = file name: load it to 3000:0100 and run it. CF set when there is no
+; such program.
+run_file PROC NEAR
+    call file_read
+    jc rnf_bad
     mov cx,ax
     cmp cx,0f000h
-    ja cr_bad
+    ja rnf_bad
     push ds                            ; copy the image to 3000:0100
     push es
     mov ax,FSSEG
@@ -806,14 +820,12 @@ cr_load:
     pop es
     pop ds
     call prog_run
-    mov termdirty,1
+    clc
     ret
-cr_bad:
-    mov si,OFFSET t_badcmd
-    call term_puts
-    call term_crlf
+rnf_bad:
+    stc
     ret
-cmd_run ENDP
+run_file ENDP
 
 ; ---- native program interface ----
 
@@ -843,11 +855,13 @@ prog_return:
     ret
 prog_run ENDP
 
-; INT 80h: AH = 0 exit, 1 print AL, 2 print DS:DX, 3 wait for a key.
+; INT 80h: AH = 0 exit, 1 print AL, 2 print DS:DX, 3 wait for a key,
+; 4 save CX bytes at DS:SI as the file named at DS:DX. 10h..14h give the
+; program a window: see PGUI.INC.
 sys_call PROC FAR
     sti
     cmp ah,0
-    je sys_exit
+    L_JE sys_exit
     push ax
     push bx
     push cx
@@ -869,6 +883,18 @@ sys_call PROC FAR
     je sys_puts
     cmp ah,3
     je sys_key
+    cmp ah,4
+    L_JE sys_save
+    cmp ah,10h
+    L_JE sys_gopen
+    cmp ah,11h
+    L_JE sys_grect
+    cmp ah,12h
+    L_JE sys_gtext
+    cmp ah,13h
+    L_JE sys_gbevel
+    cmp ah,14h
+    L_JE sys_gevent
     jmp sys_back
 sys_putc:
     call term_putc
@@ -922,10 +948,56 @@ sys_exit:
     mov ss,kss
     mov sp,ksp
     sti
+    cmp guiopen,0                      ; its window goes with it
+    je se_plain
+    mov guiopen,0
+    call gui_fullclip
+    mov dirty,1
+se_plain:
     jmp prog_return
+sys_save:
+    mov word ptr [bp+16],1             ; AX = 1 unless the file is written
+    mov es,[bp+2]                      ; caller's DS
+    mov si,[bp+10]                     ; DX = name, copied to arg1
+    mov di,OFFSET arg1
+    mov cx,23
+ss_name:
+    mov al,es:[si]
+    inc si
+    mov [di],al
+    inc di
+    or al,al
+    jz ss_named
+    loop ss_name
+    mov byte ptr [di],0
+ss_named:
+    cmp arg1,0
+    je ss_done
+    mov cx,[bp+12]                     ; CX = size
+    cmp cx,BUF_MAX
+    ja ss_done
+    push ds                            ; caller's DS:SI -> the file buffer
+    mov si,[bp+8]
+    mov di,BUF_OFS
+    mov ax,FSSEG
+    mov es,ax
+    mov ds,[bp+2]
+    rep movsb
+    pop ds
+    mov si,OFFSET arg1
+    mov cx,[bp+12]
+    call file_write
+    jc ss_done
+    mov word ptr [bp+16],0
+ss_done:
+    push cs
+    pop es
+    jmp sys_back
 sys_call ENDP
 
 term_refresh_if_top PROC NEAR
+    cmp guiopen,0                      ; a program's window covers it
+    jne trt_no
     cmp active,4
     jne trt_no
     test hidden,8

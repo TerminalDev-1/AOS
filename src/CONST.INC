@@ -31,11 +31,15 @@ WIN_YMIN  EQU 0
 WIN_YMAX  EQU 164
 BACK_OFS  EQU (WIN_H-1)*80+(WIN_W/8-1)
 PROGSEG   EQU 3000h  ; native programs run here
+GUI_X     EQU 112    ; a program's window (see PGUI.INC)
+GUI_Y     EQU 72
+GUI_CX    EQU 3      ; its client origin inside the frame
+GUI_CY    EQU 21
 
 MENU_X    EQU 2
-MENU_Y    EQU 297
+MENU_Y    EQU 269
 MENU_W    EQU 176
-MENU_H    EQU 155
+MENU_H    EQU 183
 
 WEL_X     EQU 120
 WEL_Y     EQU 96
@@ -74,6 +78,7 @@ A_NOTES    EQU 2
 A_SYSTEM   EQU 3
 A_TERM     EQU 4     ; the WinKit terminal
 A_SHUTDOWN EQU 18    ; open the Shut Down dialog
+A_STORE    EQU 19    ; run WKSTORE.WKX
 A_ENTER    EQU 5     ; leave the welcome dialog
 A_RESTART  EQU 7
 A_POWER    EQU 8

@@ -4,6 +4,7 @@
     python scripts/test.py          # boot it in QEMU and check every feature
     python scripts/test_wkasm.py    # self-test of the assembler
     python scripts/run.py           # boot it in a QEMU window yourself
+    python scripts/run.py --store   # the same, with the WinKit Store reachable
     python scripts/showcase.py      # screenshots + overview in out/screens/
 
 Add `--snapshot` to `run.py` to discard disk writes when QEMU exits.
@@ -37,8 +38,9 @@ loop and `INCLUDE`s the rest.
 | `FS.INC` | FAT12 driver over BIOS INT 13h: read, write, delete, rename |
 | `STORAGE.INC` | the Files list and `NOTES.TXT` |
 | `TERM.INC` | the WinKit terminal, its commands, and the INT 80h program interface |
+| `PGUI.INC` | the INT 80h window calls: a program's window, drawing, key and mouse events |
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
-| `progs/*.ASM` | sample programs: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE` |
+| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, and the Store, `WKSTORE` |
 
 The desktop uses VGA mode 12h (640x480) with its own 16-colour palette and
 writes straight to planar video memory. PS/2 mouse input comes from the BIOS
@@ -57,6 +59,7 @@ it uncovered; typing in WinKit redraws only the terminal.
 | Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon |
 | Arrow keys + Space | Move the pointer and activate its target without a mouse |
 | F1 / F2 / F3 / F6 | Open Files / Notes / System / WinKit |
+| F7 | Run the Store (`WKSTORE.WKX`) |
 | F4 | Save Notes to `NOTES.TXT` |
 | F5 | Close the active window |
 | F9 | Open or close the Start menu (Esc closes it) |
@@ -81,12 +84,47 @@ Open it from the Start menu or with F6.
 ### Native programs (`.WKX`)
 
 A program is a flat binary assembled with `ORG 100h`, loaded to
-`3000:0100`, using four `INT 80h` services (exit, print character, print
-string, read key). Drop a new `.ASM` into `src/progs/` and rebuild;
+`3000:0100`, using the `INT 80h` services: exit, print character, print
+string, read key, save file, and five calls that give the program a window
+to draw in with key and mouse events. Drop a new `.ASM` into `src/progs/` and rebuild;
 `mkimage.py` assembles every program there and puts it on the disk.
 
 The full reference, with the memory map, the assembler dialect, testing
 recipes and examples, is [docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
+
+## The WinKit Store
+
+The Store is a window that lists programs and installs the one you pick as
+`NAME.WKX` on the disk. It is an ordinary native program, `WKSTORE.WKX`,
+that draws its window through `INT 80h`. WinKit has no network: the
+program talks to the serial port (COM1, polled), and the other end of that
+port is the store server, [`scripts/wkstore.py`](scripts/wkstore.py),
+running on the host.
+
+    python scripts/run.py --store    # QEMU with COM1 wired to the server
+
+Open it from Start > Store, by double-clicking the Store icon, with F7, or
+by typing `wkstore` in the terminal.
+
+| Control | Action |
+|---|---|
+| Click a row, Up / Down | Select a program |
+| Install button, Enter or I | Download the selected program and save it |
+| Reload button, R | Ask the server for the catalogue again |
+| Prev / Next buttons, PgUp / PgDn | Page through the list (10 per page) |
+| Close button, Esc or Q | Leave the Store |
+
+While the Store is open it is the only thing running: like every WinKit
+program it has the machine to itself, so the other windows do not respond
+until it is closed. Installed programs are run from the terminal by name.
+
+The server offers every `.ASM` in [`store/`](store/): it assembles each one
+with wkasm and takes the description from a `; Store: text` comment line (up
+to 30 characters). To publish a program, drop `NAME.ASM` there and press
+Reload in the Store; nothing needs rebuilding. `python scripts/wkstore.py --list`
+prints the catalogue. The store holds at most 64 programs of up to 52 KB.
+Without `--store`, the Store waits three seconds and says the server did not
+answer. The wire protocol is described at the top of `wkstore.py`.
 
 ## The assembler
 

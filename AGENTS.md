@@ -12,13 +12,15 @@ rest of DOS is there too. It is not. In particular, none of these exist:
 
 | Does not exist in WinKit | What is true instead |
 |---|---|
-| `INT 21h` (any function), `INT 20h`, `INT 27h` | programs use `INT 80h`, which has four functions |
+| `INT 21h` (any function), `INT 20h`, `INT 27h` | programs use `INT 80h`, which has ten functions (text, keys, save a file, one window) |
 | `.COM` / `.EXE` programs, MZ headers | programs are flat `.WKX` binaries (`ORG 100h`, no header) |
 | a PSP, a command tail, `argc`/`argv`, an environment block | programs receive **no arguments at all** |
 | `COMMAND.COM`, `AUTOEXEC.BAT`, `CONFIG.SYS`, batch files | the shell is the WinKit terminal inside the desktop |
 | drive letters, `A:\>`, paths, subdirectories | one flat root directory, prompt is `winkit> ` |
 | DOS utilities (`FORMAT`, `CHKDSK`, `EDIT`, `MORE`, `DEBUG`...) | the terminal has the commands in the README, and no others |
-| a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); programs have no file I/O |
+| a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); a program can save one whole file (`INT 80h` `AH=4`) and nothing else |
+| a network, TCP/IP, sockets, a modem dialler, an internet app store | `WKSTORE.WKX` fetches programs over the serial port (COM1) from `scripts/wkstore.py` on the host |
+| a windowing API (message loops, several windows, controls, bitmaps, fonts) | a program may open **one** fixed window and draw rectangles, bevels and text in it (`INT 80h` `AH=10h`-`14h`) |
 | TSRs, device drivers, `INT 21h AH=31h` | not supported |
 | MASM, LINK, EXE2BIN, DOSBox | `scripts/wkasm.py`, pure Python |
 

@@ -54,7 +54,8 @@ pd_icon:
     mov icy,ax
     mov icx,28
     mov ax,pi
-    add ax,11                          ; 11..13: folder, document, computer
+    add ax,11                          ; 11..15: folder, document, computer,
+                                       ; terminal, store
     call draw_icon
     mov bx,pi
     shl bx,1
@@ -94,7 +95,7 @@ pd_plain:
     mov ty,ax
     call textc
     inc pi
-    cmp pi,4
+    cmp pi,5
     L_JB pd_icon
     ret
 paint_desktop ENDP
@@ -183,7 +184,7 @@ paint_taskbar ENDP
 ; ---- Start menu ----
 paint_menu PROC NEAR
     BVL MENU_X,MENU_Y,MENU_W,MENU_H,BV_WINDOW
-    BOX 5,300,26,149,K_SHADOW
+    BOX 5,272,26,177,K_SHADOW
     mov tx,9
     mov ty,444
     mov fg,K_WHITE
@@ -191,13 +192,13 @@ paint_menu PROC NEAR
     call rottext
     mov tx,10
     call rottext
-    xor bx,bx                          ; items 0..4
+    xor bx,bx                          ; items 0..5
 pm_item:
     mov ax,bx
     mov cx,28
     mul cx
-    add ax,300                         ; y of the item
-    cmp bx,4
+    add ax,272                         ; y of the item
+    cmp bx,5
     jb pm_y
     add ax,9                           ; room for the separator
 pm_y:
@@ -223,7 +224,12 @@ pm_draw:
     cmp ax,4
     jb pm_kind
     je pm_term
+    cmp ax,5
+    je pm_store
     mov ax,4                           ; power icon for Shut Down
+    jmp pm_kind
+pm_store:
+    mov ax,6
     jmp pm_kind
 pm_term:
     mov ax,5                           ; terminal
@@ -240,7 +246,7 @@ pm_kind:
     call textout
     pop bx
     inc bx
-    cmp bx,5
+    cmp bx,6
     L_JB pm_item
     BOX 34,413,140,1,K_SHADOW
     BOX 34,414,140,1,K_WHITE
