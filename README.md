@@ -2,7 +2,7 @@
 
 A small standalone operating system written in 16-bit x86 assembly: a
 Windows 98-style desktop and its own terminal, **WinKit**. It boots from its
-own boot sector. There is no DOS underneath; disk access goes through the BIOS
+own boot sector and shows its own boot screen. There is no DOS underneath; disk access goes through the BIOS
 and the kernel's own FAT12 driver.
 
 ![WinKit: desktop, files, terminal and native programs](docs/overview.png)
@@ -19,15 +19,17 @@ and the kernel's own FAT12 driver.
 - **Desktop:** widescreen under QEMU; teal wallpaper, silver 3D-bevelled windows with gradient title
   bars, Start menu, taskbar with window buttons and a clock, desktop icons,
   minimize and close, flicker-free window dragging.
-- **Apps:** Files (lists the disk), Notes (a text editor that saves to disk),
+- **Boot screen:** the logo and a progress bar while the system starts,
+  then the welcome dialog.
+- **File Manager:** the files on the disk with their sizes and kinds, and a
+  gauge of the free disk space. Select a file and Open, Copy, Rename or
+  Delete it; a double click runs a program or shows a text file.
+- **Apps:** the File Manager, Notes (a text editor that saves to disk),
   System Properties, the WinKit terminal, and the Store. Start > Programs
   lists every program on the disk and runs it with a click, and every
   program you install gets a shortcut on the desktop.
 - **WinKit terminal:** `help dir type echo copy ren del cls ver time mem
   reboot exit`, `echo TEXT > FILE`, and it runs native `.WKX` programs.
-- **Code:** an editor with a built-in assembler (`CODE.WKX`, on the
-  desktop). Write a program, press F9, and it is built and run inside
-  WinKit, with no other computer involved.
 - **Setup:** `SETUP.WKX` (desktop shortcut, or Start > Programs > SETUP)
   installs WinKit on a hard disk and can restart straight into it; the
   hard disk then boots without the floppy.
@@ -36,7 +38,7 @@ and the kernel's own FAT12 driver.
 - **Native programs:** flat binaries that talk to the system through
   `INT 80h`: terminal text and keys, saving a file, and a window of their
   own with drawing and mouse clicks. Run one from Start > Programs, by
-  clicking it in Files, or by typing its name in the terminal. Examples are in [`src/progs`](src/progs).
+  double-clicking it in the File Manager, or by typing its name in the terminal. Examples are in [`src/progs`](src/progs).
 - **WinKit Store:** a windowed program (`WKSTORE.WKX`; Start > Store, the
   desktop icon or F7) that downloads windowed programs from a store server
   on the host, installs them on the disk and runs them. There is no network: the link is the
@@ -69,10 +71,6 @@ is organised.
 > **WinKit is not DOS and will never be DOS.** AI agents and newcomers: read
 > [AGENTS.md](AGENTS.md) first, so you do not assume DOS features that do not
 > exist here.
-
-The quickest way is inside WinKit: open **Code** on the desktop, type, and
-press F9. To build programs on your own computer instead, or to learn the
-system calls, read on.
 
 WinKit runs its own native programs (`.WKX`). The complete guide, written for
 both people and AI agents, is

@@ -4,7 +4,8 @@ fontoff dw 0
 fontseg dw 0
 ; Stable telemetry block read by the emulator tests: keep this order.
 signature db 'V4GUIstate'
-viewstate db V_START                   ; V_START / V_DESKTOP / V_SHUTDOWN / V_OFF
+viewstate db V_BOOT                    ; V_BOOT, then V_START / V_DESKTOP /
+                                       ; V_SHUTDOWN / V_OFF
 opened db 0                            ; window bitset: bit n = window n+1
 active db 1                            ; top window, 1..3
 dirty db 1                             ; whole scene needs repainting
@@ -161,6 +162,7 @@ slot dw 0
 
 ; ---- storage ----
 files db 224*14 dup (0)                ; attribute byte + 13-byte name
+filesize dw 224 dup (0)                ; their sizes in bytes (FFFFh = more)
 filecount dw 0
 filepage dw 0
 fk dw 0
@@ -179,6 +181,19 @@ linebuf db 64 dup (0)
 clockbuf db '12:00 AM',0,0,0
 lastclock dw 0ffffh
 clockdirty db 0
+
+; ---- File Manager (window 1; see WINDOWS.INC and STORAGE.INC) ----
+fmsig db 'WKFMstate'                   ; tests read the three values after it
+fmsel dw 0ffffh                        ; selected file in files[], FFFF = none
+fmmode db 0                            ; 0 browse, 1 rename, 2 copy: a name is
+                                       ; being typed; 3 delete: asking Y or N
+fmfree dw 0                            ; free clusters, as of refresh_files
+fmlen dw 0                             ; characters typed in fmname
+fmname db 13 dup (0)
+fmmsg dw 0                             ; result of the last action, or 0
+fmclk dw 0                             ; tick of the last click on a file
+fmptr dw 0
+fmink db 0
 
 ; ---- FAT12 volume (see FS.INC) ----
 fs_drive db 0
@@ -324,15 +339,27 @@ shut_tab:
 
 ; Window-relative tables.
 files_tab:
-    dw 10,25,84,24
+    dw 8,25,56,24
+    db S_PUSH,A_FMOPEN
+    dw OFFSET lbl_open
+    dw 68,25,56,24
+    db S_PUSH,A_FMCOPY
+    dw OFFSET lbl_copy
+    dw 128,25,64,24
+    db S_PUSH,A_FMREN
+    dw OFFSET lbl_rename
+    dw 196,25,64,24
+    db S_PUSH,A_FMDEL
+    dw OFFSET lbl_delete
+    dw 264,25,72,24
     db S_PUSH,A_REFRESH
     dw OFFSET lbl_refresh
-    dw 100,25,64,24
+    dw 352,25,26,24
     db S_PUSH,A_PREV
     dw OFFSET lbl_prev
-    dw 170,25,64,24
+    dw 382,25,26,24
     db S_PUSH,A_NEXT
-    dw OFFSET lbl_next
+    dw OFFSET s_arrow
     dw 0ffffh
 
 notes_tab:
@@ -373,14 +400,17 @@ lbl_ok db 'OK',0
 lbl_cancel db 'Cancel',0
 lbl_shutdn db 'Shut Down...',0
 lbl_refresh db 'Refresh',0
-lbl_prev db '< Prev',0
-lbl_next db 'Next >',0
+lbl_prev db '<',0
+lbl_open db 'Open',0
+lbl_copy db 'Copy',0
+lbl_rename db 'Rename',0
+lbl_delete db 'Delete',0
 lbl_save db 'Save  F4',0
 lbl_r0 db 'Shut down',0
 lbl_r1 db 'Restart',0
 lbl_term db 'Terminal',0
 lbl_store db 'Store',0
-mn_files db 'Files',0
+mn_files db 'File Manager',0
 mn_notes db 'Notes',0
 mn_system db 'System',0
 mn_term db 'Terminal',0
@@ -394,7 +424,7 @@ logo db 'WK',0
 menuptr dw OFFSET mn_files,OFFSET mn_notes,OFFSET mn_system,OFFSET mn_term
         dw OFFSET mn_store,OFFSET mn_progs,OFFSET mn_shut
 
-ttl_files db 'Files - boot disk',0
+ttl_files db 'File Manager',0
 ttl_notes db 'Notes - NOTES.TXT',0
 ttl_system db 'System Properties',0
 ttl_welcome db 'Welcome to WinKit-preview',0
@@ -417,7 +447,27 @@ s_page db 'Page ',0
 s_objects db ' object(s)',0
 s_nofiles db 'No files found.',0
 s_limit db '/240',0
-s_root db 'Boot disk, root folder',0
+fm_hname db 'Name',0
+fm_hsize db 'Size',0
+fm_htype db 'Type',0
+fm_tprog db 'Program',0
+fm_ttext db 'Text',0
+fm_tfile db 'File',0
+fm_freeof db ' KB free of ',0
+fm_kb db ' KB',0
+fm_pnew db 'New name: ',0
+fm_pcopy db 'Copy to: ',0
+fm_pdel db 'Delete? Press Y or N',0
+fm_mselect db 'Select a file first.',0
+fm_mdeleted db 'Deleted.',0
+fm_mrenamed db 'Renamed.',0
+fm_mcopied db 'Copied.',0
+fm_minuse db 'That name is in use.',0
+fm_mfull db 'Disk full.',0
+fm_mfail db 'Cannot do that.',0
+bt_name db 'WinKit',0
+bt_sub db 'preview',0
+bt_start db 'Starting WinKit...',0
 hintnotes db 'Type to edit.  F4 saves.',0
 savedtext db 'Saved to NOTES.TXT',0
 errortext db 'Cannot save - disk full or protected',0

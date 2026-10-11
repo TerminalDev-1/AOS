@@ -33,9 +33,7 @@ BOOT_KSECTS = 62
 DATE_1980_01_01 = 0x0021
 ATTR_ARCHIVE = 0x20
 ATTR_SYSTEM = 0x04                    # part of WinKit: no desktop shortcut
-SHORTCUTS = {"CODE.WKX", "SETUP.WKX"}  # shipped files that do get one
-# Sources put on the disk as text, to open in the Code editor.
-SAMPLES = ["HELLO", "COUNT", "KEYS", "FIB", "REVERSE", "WINDOW"]
+SHORTCUTS = {"SETUP.WKX"}             # the shipped file that does get one
 
 README = (b"WinKit-preview\r\n"
           b"==============\r\n"
@@ -127,10 +125,6 @@ def main():
     kernel = built.pop("KERNEL.BIN")
     boot = built.pop("BOOT.BIN")
     files = [("README.TXT", README)] + sorted(built.items())
-    for name in SAMPLES:
-        with open(os.path.join(ROOT, "src", "progs", name + ".ASM"), "rb") as fh:
-            source = fh.read().replace(b"\r\n", b"\n")
-        files.append((name + ".ASM", source.replace(b"\n", b"\r\n")))
     image, ksects, data_lba = build_image(kernel, boot, files)
     os.makedirs(os.path.dirname(args.out), exist_ok=True)
     with open(args.out, "wb") as fh:

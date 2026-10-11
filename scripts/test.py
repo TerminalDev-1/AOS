@@ -39,12 +39,7 @@ def main():
         memory = Path(m.tmp) / "ram.bin"
 
         def wait_gui():
-            deadline = time.time() + 30
-            while m.video_mode() != 0x12:
-                if time.time() > deadline:
-                    raise AssertionError("desktop did not start")
-                time.sleep(.2)
-            time.sleep(1)
+            m.wait_desktop()             # the boot screen comes first
 
         def locate():
             m.qmp("pmemsave", val=0, size=640 * 1024, filename=str(memory))
@@ -53,6 +48,24 @@ def main():
             term = ram.rfind(b"WKTERMBUF") + 9
             assert state > 10 and term > 9, "telemetry not found"
             return state, term
+
+        def fm():
+            """The File Manager: (selected file or 0xFFFF, what it is asking
+            for: 0 nothing, 1 a new name, 2 a copy's name, 3 delete yes/no,
+            free 512-byte clusters). They follow "WKFMstate" (DATA.INC)."""
+            m.qmp("pmemsave", val=0x10000, size=0x10000, filename=str(memory))
+            ram = memory.read_bytes()
+            at = ram.find(b"WKFMstate")
+            assert at > 0, "File Manager telemetry not found"
+            return struct.unpack("<HBH", ram[at + 9:at + 14])
+
+        def fm_row(n):
+            """A point on row n of its list (the window has not been moved)."""
+            return 96 + 100, 20 + 79 + n * 18 + 9
+
+        def fm_button(n):
+            """Its toolbar: 0 Open, 1 Copy, 2 Rename, 3 Delete."""
+            return 96 + (28, 88, 152, 220)[n], 20 + 37
 
         def gui():
             """(1, title) while a program has its window up, else (0, ...).
@@ -66,6 +79,15 @@ def main():
             title = ram[at - 42:at].split(b"\0")[0].decode("latin-1")
             return ram[at - 43], title
 
+        deadline = time.time() + 30      # the kernel draws its boot screen
+        while m.video_mode() != 0x12:    # as soon as it has set the mode
+            assert time.time() < deadline, "WinKit did not start"
+            time.sleep(.1)
+        time.sleep(.8)
+        booting = m.view_state()
+        m.qmp("stop")
+        m.screenshot(str(SHOTS / "00-boot.png"))
+        m.qmp("cont")
         wait_gui()
         state_addr, term_addr = locate()
 
@@ -134,7 +156,8 @@ def main():
             size = struct.unpack(">2I", fh.read(24)[16:])
         check("the QEMU display driver gives a widescreen desktop",
               size == (WIDTH, 480))
-        check("boots straight into the VGA desktop", state()[0] == 0)
+        check("a boot screen is shown while the system starts, then the "
+              "welcome dialog", booting == 4 and state()[0] == 0)
         check("PS/2 mouse enabled without any driver", state()[4] == 1)
         # The QEMU mouse driver: an absolute position (0..0x7fff on each
         # axis) puts WinKit's pointer right there, like a host pointer does.
@@ -156,8 +179,8 @@ def main():
         click(DLG + 330, 320)                  # OK on the welcome dialog
         check("mouse enters desktop", state()[0] == 1)
         click(30, 466)                   # Start button
-        click(100, 258)                  # Files in the Start menu
-        check("Files opens from the Start menu", state()[1] == 1)
+        click(100, 258)                  # File Manager in the Start menu
+        check("the File Manager opens from the Start menu", state()[1] == 1)
         m.key("pgdn")
         shot("02-files-page-two")
         m.key("pgup")
@@ -165,7 +188,7 @@ def main():
         m.type("Assembly GUI notes")
         m.key("f4")
         time.sleep(1.5)
-        check("Files and Notes coexist", state()[1:3] == (3, 2))
+        check("the File Manager and Notes coexist", state()[1:3] == (3, 2))
         shot("03-notes")
         mouse(260, 60, True)             # drag Notes by its title bar
         mouse(308, 92)
@@ -253,23 +276,80 @@ def main():
               "DICE.WKX" in out)
         check("the Store installs the program picked with the keyboard",
               "CLOCK.WKX" in out)
-        m.key("f1")                          # Files lists them: 10 per column
+        # ---- the File Manager: nine files to a page; the 13 on the disk
+        # are README.TXT, COUNT, FIB, HELLO, HI, KEYS, REVERSE, SETUP and
+        # WINDOW, then WKSTORE, NOTES.TXT, DICE and CLOCK on page two ----
+        free_kb = int(out.split(" KB free")[0].split()[-1])
+        m.key("f1")
         time.sleep(1)
-        click(96 + 12 + 200 + 40, 20 + 64 + 8 * 18 + 8)  # DICE.WKX: the 19th
-                                             # file, so column 2, row 9
+        click(*fm_row(0))
+        check("a click in the File Manager selects a file", fm()[:2] == (0, 0))
+        check("it shows the same free disk space as dir",
+              fm()[2] // 2 == free_kb and 1000 < free_kb < 1440)
+        shot("10-file-manager")
+        dblclick(*fm_row(3))                 # HELLO.WKX
         time.sleep(1.5)
-        check("clicking a program in Files runs it", gui() == (1, "Dice"))
-        m.key("esc")
-        time.sleep(1)
-        click(96 + 12 + 40, 20 + 64 + 4 * 18 + 8)    # HELLO.WKX, the 5th
-        time.sleep(1.5)
-        check("a text program started from Files gets the terminal",
+        check("a double click on a text program runs it in the terminal",
               state()[2] == 4 and
               "Hello from a native WinKit program!" in term_text())
+        m.key("f1")
+        m.key("pgdn")
+        dblclick(*fm_row(2))                 # DICE.WKX
+        time.sleep(1.5)
+        check("a double click on a windowed program opens its window",
+              gui() == (1, "Dice"))
+        m.key("esc")
+        time.sleep(1)
+        click(*fm_row(1))                    # NOTES.TXT
+        click(*fm_button(0))                 # Open
+        time.sleep(1)
+        check("Open shows a text file in the terminal",
+              state()[2] == 4 and "type NOTES.TXT" in term_text() and
+              "Assembly GUI notes" in term_text())
+        m.key("f1")
+        click(*fm_row(1))
+        click(*fm_button(1))                 # Copy: it asks for the name
+        asking = fm()[1]
+        m.type("n2.txt")
+        m.key("ret")
+        time.sleep(1)
+        m.key("f6")
+        out = run("type n2.txt")
+        check("Copy makes a copy under the name typed",
+              asking == 2 and "Assembly GUI notes" in out)
+        m.key("f1")
+        click(*fm_row(4))                    # N2.TXT, the newest file
+        click(*fm_button(2))                 # Rename: starts from the old name
+        asking = fm()[1]
+        for _ in range(6):
+            m.key("backspace")
+        m.type("n3.txt")
+        shot("11-file-manager-rename")
+        m.key("ret")
+        time.sleep(1)
+        m.key("f6")
+        out = run("dir")
+        check("Rename gives the file the name typed",
+              asking == 1 and "N3.TXT" in out and "N2.TXT" not in out)
+        m.key("f1")
+        click(*fm_row(4))
+        click(*fm_button(3))                 # Delete: it asks first
+        asking = fm()[1]
+        m.key("n")                           # no
+        time.sleep(.5)
+        kept = fm()[1] == 0 and fm()[0] == 13
+        m.key("delete")                      # the key asks too
+        m.key("y")
+        time.sleep(1)
+        m.key("f6")
+        out = run("dir")
+        check("Delete removes the file, but only after a yes",
+              asking == 3 and kept and "N3.TXT" not in out and
+              fm()[2] // 2 == free_kb)
         click(30, 466)                       # Start
         click(100, 398)                      # Programs: its list opens
-        shot("10-programs")
-        click(178 + 60, 248 + 9 * 18 + 9)    # DICE, the 10th program of 11
+        shot("12-programs")
+        click(178 + 60, 266 + 8 * 18 + 9)    # DICE, the 9th program of 10
         time.sleep(1.5)
         check("Start > Programs lists the installed programs and runs one",
               gui() == (1, "Dice"))
@@ -280,7 +360,7 @@ def main():
         time.sleep(1)
         check("a windowed program gets its click and returns",
               "The window is closed." in term_text())
-        shot("11-terminal-final")
+        shot("13-terminal-final")
         out = run("dir")
         m.type("cls")
         m.key("ret")
@@ -298,8 +378,8 @@ def main():
         state_addr, term_addr = locate()
         check("Restart reboots into the desktop", state()[0] == 0)
         click(DLG + 330, 320)
-        shot("12-shortcuts")
-        dblclick(124, 176 + 24)              # second column: CODE, SETUP, DICE
+        shot("14-shortcuts")
+        dblclick(124, 96 + 24)               # second column: SETUP, DICE, CLOCK
         time.sleep(1.5)
         check("an installed program has a desktop shortcut that runs it",
               gui() == (1, "Dice"))
@@ -308,7 +388,7 @@ def main():
         m.key("f6")
         out = run("type notes.txt")
         check("files survive the reboot", "Assembly GUI notes" in out)
-        shot("13-after-reboot")
+        shot("15-after-reboot")
 
     # ---- Setup: install on an empty hard disk, then start from it ----
     hda = ROOT / "out" / "test-hda.img"
@@ -320,7 +400,7 @@ def main():
         wait_gui()
         state_addr, term_addr = locate()
         click(DLG + 330, 320)                      # OK on the welcome dialog
-        dblclick(124, 96 + 24)               # the Setup shortcut
+        dblclick(124, 16 + 24)               # the Setup shortcut
         time.sleep(1.5)
         check("Setup has a desktop shortcut that opens it",
               gui() == (1, "WinKit Setup"))
@@ -333,7 +413,7 @@ def main():
         m.key("ret")                         # Install
         m.key("ret")                         # ...and again to confirm
         time.sleep(1)
-        shot("14-setup")
+        shot("16-setup")
         m.key("ret")                         # read after the copy: Restart
         deadline = time.time() + 180
         while boot_drive() != 0x80:
@@ -359,7 +439,7 @@ def main():
         m.type("setup")
         m.key("ret")
         time.sleep(1.5)
-        shot("15-from-hard-disk")
+        shot("17-from-hard-disk")
         m.key("ret")                         # must not offer to install
         m.key("ret")
         m.key("esc")
@@ -420,83 +500,6 @@ def main():
               "disk (81h) and restarts from it",
               boot_drive() == 0x81 and "SETUP.WKX" in out)
     hda.unlink()
-
-    # ---- Code: write, build and run programs inside WinKit ----
-    with Machine(image) as m:
-        memory = Path(m.tmp) / "ram.bin"
-
-        def program_has(text):
-            """Is this text somewhere in the running program's memory?"""
-            m.qmp("pmemsave", val=0x30000, size=0x10000, filename=str(memory))
-            return text in memory.read_bytes()
-
-        wait_gui()
-        state_addr, term_addr = locate()
-        click(DLG + 330, 320)
-        dblclick(124, 16 + 24)               # the Code shortcut
-        time.sleep(1.5)
-        check("Code has a desktop shortcut and opens with a program in it",
-              gui() == (1, "WinKit Code") and
-              program_has(b"mov dx,OFFSET hello"))
-        m.key("down")                        # add a line of our own...
-        m.key("down")
-        m.key("end")
-        m.key("ret")
-        m.type("    nop")
-        m.key("f9")                          # ...and run: it asks for a name
-        time.sleep(.5)
-        m.type("mine")
-        m.key("ret")
-        time.sleep(3)
-        shot("16-code-ran")
-        check("a program typed in Code is built and run inside WinKit",
-              gui()[0] == 0 and state()[2] == 4 and
-              "Hello from my own program!" in term_text())
-        out = run("dir")
-        check("its source and program are on the disk",
-              "MINE.ASM" in out and "MINE.WKX" in out)
-        run("code")                          # it reopens what was edited last
-        time.sleep(1)
-        m.type("bogus ax")                   # a mistake on line 1
-        m.key("ret")
-        m.key("f5")
-        time.sleep(1.5)
-        shot("17-code-error")
-        check("a mistake is reported with its line number",
-              program_has(b"Line 1: unknown instruction"))
-        m.key("esc")
-        time.sleep(1)
-        for name, keys, expected in (
-                ("fib", "", "0 1 1 2 3 5 8 13 21 34 55 89 144"),
-                ("count", "", "1 2 3 4 5"),
-                ("reverse", "winkit\n", "tikniw")):
-            run("code")
-            time.sleep(1)
-            m.key("f3")                      # Open
-            time.sleep(.4)
-            m.type(name)
-            m.key("ret")
-            time.sleep(1)
-            m.key("f9")                      # build it here and run it
-            time.sleep(2.5)
-            for ch in keys:
-                m.key("ret" if ch == "\n" else ch)
-            time.sleep(1)
-            check(f"{name.upper()}.ASM, the shipped source, builds in Code and "
-                  "runs", expected in term_text())
-        run("code")
-        time.sleep(1)
-        m.key("f3")
-        time.sleep(.4)
-        m.type("window")
-        m.key("ret")
-        time.sleep(1)
-        m.key("f9")
-        time.sleep(2.5)
-        check("a windowed program builds in Code and opens its window",
-              gui() == (1, "Hello window"))
-        click(CX + 60, CY + 30)              # its Quit button
-        time.sleep(1)
 
     print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
 

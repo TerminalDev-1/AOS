@@ -1,4 +1,117 @@
-; SCENES.INC - desktop, icons, taskbar, Start menu and the two dialogs.
+; SCENES.INC - boot screen, desktop, icons, taskbar, Start menu and the two
+; dialogs.
+
+; ---- boot screen ----
+; Shown from the moment the screen is set up until the system has started:
+; the logo and an empty progress bar. Laid out for 640 pixels and centred
+; with dlgx, like the dialogs.
+boot_screen PROC NEAR
+    BOX 0,0,SCR_W,SCR_H,K_BLACK
+    mov ax,dlgx
+    add ax,174
+    mov icx,ax
+    mov icy,150
+    IBOX 0,0,36,36,K_RED               ; the four squares of the Start button
+    IBOX 42,0,36,36,K_GREEN
+    IBOX 0,42,36,36,K_BLUE
+    IBOX 42,42,36,36,K_YELLOW
+    mov ax,dlgx
+    add ax,274
+    mov tx,ax
+    mov ty,154
+    mov fg,K_WHITE
+    mov bsc,4
+    mov si,OFFSET bt_name
+    call bigtext
+    mov ax,dlgx
+    add ax,356
+    mov tx,ax
+    mov ty,212
+    mov fg,K_SKY
+    mov bsc,2
+    mov si,OFFSET bt_sub
+    call bigtext
+    mov ax,dlgx                        ; the bar: a grey outline
+    add ax,203
+    mov rx,ax
+    mov ry,300
+    mov rw,234
+    mov rh,18
+    mov ink,K_SHADOW
+    call rect
+    inc rx
+    inc ry
+    sub rw,2
+    sub rh,2
+    mov ink,K_BLACK
+    call rect
+    mov ax,dlgx
+    add ax,320
+    mov ctrx,ax
+    mov ty,330
+    mov fg,K_LIGHT
+    mov si,OFFSET bt_start
+    call textc
+    mov ty,440
+    mov fg,K_SHADOW
+    mov si,OFFSET w_sub
+    call textc
+    ret
+boot_screen ENDP
+
+; The system has started: fill the bar, one block every two timer ticks
+; (about two seconds in all), then hand over to the welcome dialog. Keys
+; pressed in the meantime are dropped, so that they do not answer it.
+boot_wait PROC NEAR
+    mov pi,0
+bw_block:
+    mov ax,pi
+    mov cx,12
+    mul cx
+    add ax,dlgx
+    add ax,207
+    mov rx,ax
+    mov ry,304
+    mov rw,10
+    mov rh,10
+    mov ink,K_SKY
+    call rect
+    mov cx,2
+bw_tick:
+    call tick_wait
+    loop bw_tick
+    inc pi
+    cmp pi,19
+    jb bw_block
+bw_keys:
+    mov ah,1
+    int 16h
+    jz bw_done
+    mov ah,0
+    int 16h
+    jmp bw_keys
+bw_done:
+    mov viewstate,V_START
+    mov dirty,1
+    ret
+boot_wait ENDP
+
+; Wait for the next BIOS timer tick (they come 18.2 times a second).
+tick_wait PROC NEAR
+    push ax
+    push es
+    mov ax,40h
+    mov es,ax
+    mov ax,es:[6ch]
+tw_loop:
+    sti
+    hlt
+    cmp ax,es:[6ch]
+    je tw_loop
+    pop es
+    pop ax
+    ret
+tick_wait ENDP
 
 paint PROC NEAR
     cmp viewstate,V_OFF

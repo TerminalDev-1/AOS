@@ -18,12 +18,14 @@ rest of DOS is there too. It is not. In particular, none of these exist:
 | `COMMAND.COM`, `AUTOEXEC.BAT`, `CONFIG.SYS`, batch files | the shell is the WinKit terminal inside the desktop |
 | drive letters, `A:\>`, paths, subdirectories | one flat root directory, prompt is `winkit> ` |
 | DOS utilities (`FORMAT`, `CHKDSK`, `EDIT`, `MORE`, `DEBUG`...) | the terminal has the commands in the README, and no others |
-| a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); a program can save a whole file (`INT 80h` `AH=4`) or read a whole file (`AH=6`), and nothing else |
+| a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); a program can save a whole file (`INT 80h` `AH=4`) or read a whole file (`AH=6`), and nothing else. Copying, renaming and deleting are done by the user, in the File Manager or the terminal |
 | a network, TCP/IP, sockets, a modem dialler, an internet app store | `WKSTORE.WKX` fetches programs over the serial port (COM1) from `scripts/wkstore.py` on the host |
 | a windowing API (message loops, several windows, controls, bitmaps, fonts) | a program may open **one** fixed window and draw rectangles, bevels and text in it (`INT 80h` `AH=10h`-`15h`) |
 | `FDISK`, `FORMAT`, `SYS`, partitions, an MBR, a boot manager | `SETUP.WKX` copies the running system over the whole first hard disk; there is no partition table |
 | TSRs, device drivers, `INT 21h AH=31h` | not supported |
-| MASM, LINK, EXE2BIN, DOSBox | `scripts/wkasm.py`, pure Python, on the host; inside WinKit, the assembler built into Code (`CODE.WKX`), which takes a subset of the same source |
+| MASM, LINK, EXE2BIN, DOSBox | `scripts/wkasm.py`, pure Python, on the host. There is no assembler or editor for programs inside WinKit |
+| a DOS boot (`Starting MS-DOS...`, a boot menu, `F8`) | the kernel's own boot screen (logo and a progress bar, about two seconds), then the welcome dialog |
+| Windows Explorer, folders, drag and drop, a recycle bin | the File Manager window: one flat list of the disk's files with Open, Copy, Rename and Delete; a deleted file is gone |
 
 Things that are *not* DOS even though they may look like it:
 

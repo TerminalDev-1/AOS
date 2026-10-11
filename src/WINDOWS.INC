@@ -83,7 +83,10 @@ window_bands PROC NEAR
     ret
 window_bands ENDP
 
-; ---------------------------------------------------------------- Files
+; --------------------------------------------------------- File Manager
+; A toolbar, the files of the disk one to a row (FM_ROWS a page) with
+; their size and kind, a gauge of the disk space, and two status panels.
+; The list itself and what the buttons do are in STORAGE.INC.
 body_files PROC NEAR
     call window_bands
     mov ax,wox
@@ -92,92 +95,105 @@ body_files PROC NEAR
     mov orgy,ax
     mov si,OFFSET files_tab
     call draw_buttons
-    WBEV 6,58,WIN_W-12,190,BV_FIELD
-    mov di,OFFSET linebuf              ; "Page n/m"
-    mov si,OFFSET s_page
-    call putstr
-    mov ax,filepage
-    xor dx,dx
-    mov bx,20
-    div bx
-    inc ax
-    call putnum
-    mov byte ptr [di],'/'
-    inc di
-    mov ax,filecount
-    add ax,19
-    xor dx,dx
-    div bx
-    or ax,ax
-    jnz bf_pages
-    mov ax,1
-bf_pages:
-    call putnum
-    mov byte ptr [di],0
-    WTXT WIN_W-96,29,K_BLACK,linebuf
-    mov di,OFFSET linebuf              ; status: "n object(s)"
-    mov ax,filecount
-    call putnum
-    mov si,OFFSET s_objects
-    call putstr
-    mov byte ptr [di],0
-    WTXT 12,WIN_H-24,K_BLACK,linebuf
-    WTXT 214,WIN_H-24,K_BLACK,s_root
+    WBEV 6,58,WIN_W-12,185,BV_FIELD
+    WBEV 8,60,WIN_W-16,18,BV_BUTTON            ; column headings
+    WTXT 34,61,K_BLACK,fm_hname
+    WTXT 216,61,K_BLACK,fm_hsize
+    WTXT 272,61,K_BLACK,fm_htype
+    call fm_disk
+    call fm_status
     mov ax,filecount
     sub ax,filepage
-    cmp ax,20
+    cmp ax,FM_ROWS
     jbe bf_count
-    mov ax,20
+    mov ax,FM_ROWS
 bf_count:
     mov fcnt,ax
     or ax,ax
     jnz bf_rows
-    WTXT 16,66,K_SHADOW,s_nofiles
+    WTXT 16,82,K_SHADOW,s_nofiles
     ret
 bf_rows:
     mov fk,0
 bf_loop:
-    mov ax,fk                          ; column = k / 10, row = k % 10
-    xor dx,dx
-    mov bx,10
-    div bx
-    mov frow,dx
-    mov bx,200
-    mul bx
-    add ax,wox
-    add ax,12
-    mov fxx,ax
-    mov ax,frow
+    mov ax,fk
     mov bx,18
     mul bx
     add ax,woy
-    add ax,64
+    add ax,79
     mov fyy,ax
+    mov fmink,K_BLACK
     mov ax,filepage
     add ax,fk
+    mov frow,ax                        ; its number in files[]
+    cmp ax,fmsel
+    jne bf_plain
+    mov ax,wox                         ; the selected file: white on navy
+    add ax,8
+    mov rx,ax
+    mov ax,fyy
+    mov ry,ax
+    mov rw,WIN_W-16
+    mov rh,18
+    mov ink,K_NAVY
+    call rect
+    mov fmink,K_WHITE
+bf_plain:
+    mov ax,frow
     mov bx,14
     mul bx
     add ax,OFFSET files
     mov si,ax
-    mov al,[si]                        ; attribute: 10h = directory
+    mov ah,[si]                        ; attribute: 10h = directory
     inc si
-    mov cl,2
-    test al,10h
-    jz bf_isfile
+    mov fmptr,si
     mov cl,1
-bf_isfile:
-    mov ax,fxx
+    test ah,10h
+    jnz bf_icon
+    mov cl,7
+    call fm_iswkx
+    je bf_icon
+    mov cl,2
+bf_icon:
+    mov ax,wox
+    add ax,12
     mov icx,ax
     mov ax,fyy
+    inc ax
     mov icy,ax
     mov al,cl
     call draw_icon
-    mov ax,fxx
-    add ax,22
+    mov ax,wox                         ; name
+    add ax,34
     mov tx,ax
     mov ax,fyy
+    inc ax
     mov ty,ax
-    mov fg,K_BLACK
+    mov al,fmink
+    mov fg,al
+    mov si,fmptr
+    call textout
+    mov bx,frow                        ; size, ending under its heading
+    shl bx,1
+    mov ax,filesize[bx]
+    mov di,OFFSET linebuf
+    call putnum
+    mov byte ptr [di],0
+    mov si,OFFSET linebuf
+    call strlen
+    shl cx,1
+    shl cx,1
+    shl cx,1
+    mov ax,wox
+    add ax,248
+    sub ax,cx
+    mov tx,ax
+    call textout
+    mov ax,wox                         ; kind
+    add ax,272
+    mov tx,ax
+    mov si,fmptr
+    call fm_type
     call textout
     inc fk
     mov ax,fk
@@ -185,6 +201,114 @@ bf_isfile:
     L_JB bf_loop
     ret
 body_files ENDP
+
+; The disk space row: a gauge of what is used, and the numbers.
+fm_disk PROC NEAR
+    WBEV 8,246,140,14,BV_PANEL
+    mov ax,fs_nclus
+    sub ax,fmfree                      ; clusters in use
+    mov cx,136
+    mul cx
+    div fs_nclus                       ; of the gauge's 136 pixels
+    cmp ax,2
+    jae fmd_bar
+    mov ax,2
+fmd_bar:
+    mov rw,ax
+    mov ax,wox
+    add ax,10
+    mov rx,ax
+    mov ax,woy
+    add ax,248
+    mov ry,ax
+    mov rh,10
+    mov ink,K_NAVY
+    call rect
+    mov di,OFFSET linebuf              ; "n KB free of m KB"
+    mov ax,fmfree
+    shr ax,1                           ; clusters are 512 bytes
+    call putnum
+    mov si,OFFSET fm_freeof
+    call putstr
+    mov ax,fs_nclus
+    shr ax,1
+    call putnum
+    mov si,OFFSET fm_kb
+    call putstr
+    mov byte ptr [di],0
+    WTXT 156,245,K_BLACK,linebuf
+    ret
+fm_disk ENDP
+
+; The status panels. Left: the name being typed, the question, the result
+; of the last action, or the number of files. Right: the selected file and
+; the page.
+fm_status PROC NEAR
+    mov di,OFFSET linebuf
+    cmp fmmode,3
+    jne fms_name
+    mov si,OFFSET fm_pdel
+    jmp fms_put
+fms_name:
+    cmp fmmode,0
+    je fms_idle
+    mov si,OFFSET fm_pnew
+    cmp fmmode,1
+    je fms_prompt
+    mov si,OFFSET fm_pcopy
+fms_prompt:
+    call putstr
+    mov si,OFFSET fmname
+    call putstr
+    mov byte ptr [di],'_'
+    inc di
+    jmp fms_left
+fms_idle:
+    mov si,fmmsg
+    or si,si
+    jnz fms_put
+    mov ax,filecount
+    call putnum
+    mov si,OFFSET s_objects
+fms_put:
+    call putstr
+fms_left:
+    mov byte ptr [di],0
+    WTXT 12,WIN_H-24,K_BLACK,linebuf
+    mov ax,fmsel
+    cmp ax,filecount
+    jae fms_page
+    mov bx,14
+    mul bx
+    add ax,OFFSET files+1
+    mov si,ax
+    WTXTR 214,WIN_H-24,K_BLACK
+fms_page:
+    mov di,OFFSET linebuf              ; "Page n/m"
+    mov si,OFFSET s_page
+    call putstr
+    mov ax,filepage
+    xor dx,dx
+    mov bx,FM_ROWS
+    div bx
+    inc ax
+    call putnum
+    mov byte ptr [di],'/'
+    inc di
+    mov ax,filecount
+    add ax,FM_ROWS-1
+    xor dx,dx
+    div bx
+    or ax,ax
+    jnz fms_pages
+    mov ax,1
+fms_pages:
+    call putnum
+    mov byte ptr [di],0
+    mov si,OFFSET linebuf
+    call footer_right
+    ret
+fm_status ENDP
 
 ; ---------------------------------------------------------------- Notes
 body_notes PROC NEAR
@@ -334,6 +458,12 @@ body_system ENDP
 
 ; Make window number AL (1..3) the visible active window.
 open_window PROC NEAR
+    cmp al,A_FILES                     ; the File Manager shows the disk as
+    jne ow_show                        ; it is now
+    push ax
+    call refresh_files
+    pop ax
+ow_show:
     mov active,al
     mov cl,al
     dec cl

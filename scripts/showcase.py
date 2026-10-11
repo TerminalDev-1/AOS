@@ -19,12 +19,14 @@ def main():
     shots = []
 
     with Machine(str(ROOT / "out" / "winkit.img")) as m:
-        deadline = time.time() + 30
-        while m.video_mode() != 0x12:
-            if time.time() > deadline:
-                raise AssertionError("desktop did not start")
-            time.sleep(.2)
-        time.sleep(1)
+        while m.video_mode() != 0x12:    # the boot screen is the first
+            time.sleep(.1)               # thing drawn in this mode
+        time.sleep(1.2)
+        m.qmp("stop")
+        m.screenshot(str(OUT / "01-boot.png"))
+        m.qmp("cont")
+        shots.append((OUT / "01-boot.png", "Boot screen while the system starts"))
+        m.wait_desktop()
         memory = Path(m.tmp) / "ram.bin"
         m.qmp("pmemsave", val=0, size=640 * 1024, filename=str(memory))
         addr = memory.read_bytes().rfind(b"V4GUIstate") + 10
@@ -66,7 +68,7 @@ def main():
             m.key("ret")
             time.sleep(.7)
 
-        shot("welcome", "Boots straight to the desktop (no DOS)")
+        shot("welcome", "Then the welcome dialog (no DOS)")
         click(434, 320)                  # the dialog is centred on 848
         shot("desktop", "Desktop: icons, taskbar, tray clock")
         click(44, 40)
@@ -82,7 +84,8 @@ def main():
         shot("notes", "Notes: typing, Save (F4) to the FAT12 disk")
 
         m.key("f1")
-        shot("files", "Files: root of the WinKit volume")
+        click(96 + 100, 20 + 79 + 3 * 18 + 9)    # its fourth row
+        shot("files", "File Manager: files, sizes, disk space")
         m.key("f3")
         shot("system", "System Properties window")
 

@@ -680,7 +680,7 @@ ce_tail:
     mov si,OFFSET arg1
     call file_write
     jc ce_fail
-    ret
+    jmp refresh_files
 ce_usage:
     mov si,OFFSET t_usage_echo
     jmp ce_say

@@ -95,9 +95,15 @@ da_restart:
     ret
 da_files:
     cmp al,A_REFRESH
-    L_JNE da_prev
-    jmp refresh_files
-da_prev:
+    L_JE fm_refresh
+    cmp al,A_FMOPEN
+    L_JE fm_open
+    cmp al,A_FMCOPY
+    L_JE fm_ask_copy
+    cmp al,A_FMREN
+    L_JE fm_ask_rename
+    cmp al,A_FMDEL
+    L_JE fm_ask_delete
     cmp al,A_PREV
     L_JE previous_files
     cmp al,A_NEXT
@@ -183,15 +189,7 @@ sub_item_at ENDP
 menu_opened PROC NEAR
     mov subopen,0
     mov subhot,0ffh
-    mov ax,filepage                    ; the Files window keeps its page
-    push ax
-    call refresh_files
-    pop ax
-    cmp ax,filecount
-    jae mo_done
-    mov filepage,ax
-mo_done:
-    ret
+    jmp refresh_files
 menu_opened ENDP
 
 ; A click while the Start menu is open. It closes, except on Programs.
@@ -225,7 +223,7 @@ mcl_item:
     mov menuopen,0
     cmp al,6
     je mcl_shut
-    inc al                             ; Files / Notes / System / WinKit
+    inc al                             ; File Manager / Notes / System / Terminal
     cmp al,5
     jne mcl_go
     mov al,A_STORE
@@ -595,9 +593,10 @@ ki_startclick:
     L_JE ki_click
     ret
 ki_desktop:
-    cmp al,27                          ; Esc closes the Start menu
-    L_JNE ki_notesc
+    cmp al,27                          ; Esc closes the Start menu, and
+    L_JNE ki_notesc                    ; drops a question of the File Manager
     mov menuopen,0
+    mov fmmode,0
     ret
 ki_notesc:
     cmp ah,43h                         ; F9 toggles it
@@ -672,6 +671,15 @@ ki_store:
     mov status,OFFSET hintnotes
     ret
 ki_other:
+    cmp active,1                       ; the File Manager has the keyboard
+    L_JNE ki_global
+    test opened,1
+    L_JZ ki_global
+    test hidden,1
+    L_JNZ ki_global
+    call fm_key
+    L_JC ki_done
+ki_global:
     cmp ah,49h                         ; PgUp / PgDn page the file list
     L_JE previous_files
     cmp ah,51h

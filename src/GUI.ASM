@@ -13,12 +13,12 @@
 ;   GFX.INC      rectangles, text, pointer, partial repaint, window blit
 ;   VIDEO.INC    the QEMU display driver: a wider 16-colour screen
 ;   WIDGETS.INC  bevels, title gradient, window chrome, icons, buttons
-;   SCENES.INC   desktop, taskbar, Start menu, welcome and Shut Down dialogs
-;   WINDOWS.INC  Files/Notes/System bodies, minimize, dragging
+;   SCENES.INC   boot screen, desktop, taskbar, Start menu, the two dialogs
+;   WINDOWS.INC  File Manager/Notes/System bodies, minimize, dragging
 ;   INPUT.INC    mouse callback, keyboard, click and action dispatch
 ;   VMMOUSE.INC  the QEMU mouse driver: absolute pointer positions
 ;   FS.INC       FAT12 driver over BIOS INT 13h
-;   STORAGE.INC  Files list and NOTES.TXT
+;   STORAGE.INC  the File Manager's list and actions, NOTES.TXT
 ;   TERM.INC     the WinKit terminal and INT 80h program interface
 ;   PGUI.INC     INT 80h window, drawing and events for programs
 ;   POWER.INC    restart, power off
@@ -56,6 +56,7 @@ start:
     out dx,ax
     mov ax,0ff08h
     out dx,ax
+    call boot_screen                   ; the logo, while the system starts
     call sys_install                   ; INT 80h for native programs
     call fs_init                       ; FAT12 volume
     call term_init
@@ -80,6 +81,7 @@ start:
 no_mouse:
     mov ax,0a000h
     mov es,ax
+    call boot_wait                     ; the bar fills, then the desktop
 
 mainloop:
     cmp dirty,0

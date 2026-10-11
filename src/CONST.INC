@@ -44,6 +44,7 @@ SUB_ROW   EQU 18
 SUB_MAX   EQU 16     ; programs it can show
 DESK_SYS  EQU 5      ; desktop icons of the system itself
 DESK_MAX  EQU 15     ; program shortcuts: three more columns of five
+FM_ROWS   EQU 9      ; files on a page of the File Manager
 
 WEL_X     EQU 120    ; dialogs: where they are on a 640 screen; dlgx
                      ; is added to centre them on a wider one
@@ -95,9 +96,14 @@ A_SAVE     EQU 13
 A_SEL0     EQU 14    ; shut down radio buttons 14..15
 A_SEL1     EQU 15
 A_OK       EQU 17
+A_FMOPEN   EQU 20    ; File Manager: open, copy, rename, delete
+A_FMCOPY   EQU 21
+A_FMREN    EQU 22
+A_FMDEL    EQU 23
 
 ; ---- view states ----
 V_START    EQU 0
 V_DESKTOP  EQU 1
 V_SHUTDOWN EQU 2
 V_OFF      EQU 3
+V_BOOT     EQU 4     ; the boot screen, before the welcome dialog

@@ -38,7 +38,7 @@ Then:
 
 ```
 python scripts/mkimage.py          # assembles it and puts HI.WKX on the disk
-python scripts/run.py --snapshot   # boot WinKit, press Enter, open Terminal (F6)
+python scripts/run.py --snapshot   # boot WinKit; after the boot screen press Enter, open Terminal (F6)
 winkit> hi
 Hi from WinKit!
 ```
@@ -148,7 +148,8 @@ longer than the buffer is cut short without a warning, so give a buffer as
 large as the file can be. `AX` = `FFFFh` means there is no such file.
 
 Saving and reading whole files are the only file services: a program
-cannot list, append to, rename or delete files.
+cannot list, append to, rename or delete files. (The user can copy, rename
+and delete files in the File Manager or the terminal.)
 
 ### Running another program
 
@@ -258,9 +259,9 @@ END start
 
 A program is started from Start > Programs (every `.WKX` on the disk is
 listed there, so yours appears as soon as it is on the disk), from its
-desktop shortcut if it was installed after the image was built, by clicking
-it in the Files window, by name in the terminal, or by another program
-with `AH=5`. The Store (`WKSTORE.WKX`) is
+desktop shortcut if it was installed after the image was built, by
+double-clicking it in the File Manager, by name in the terminal, or by
+another program with `AH=5`. The Store (`WKSTORE.WKX`) is
 the one program that also has a Start menu entry, a desktop icon and a key
 (F7). A program started from the desktop that prints with `AH=1`/`AH=2` or
 reads a key with `AH=3` gets the terminal window opened for it.
@@ -334,38 +335,6 @@ python scripts/wkasm.py src/progs/HI.ASM -m            # also print the symbols
 Error messages name the file and line: `HI.ASM(12): jump out of range by 9
 byte(s)`.
 
-## The assembler inside WinKit
-
-The Code editor (`CODE.WKX`, see [BUILDING.md](../BUILDING.md)) has its own
-assembler, written in WinKit assembly, so programs can be built without a
-host computer. It reads the same kind of source as `wkasm`, with these
-differences:
-
-* **No `MACRO`, no `INCLUDE`.** Everything else in the table above works:
-  labels, `EQU`, `DB`/`DW` with strings, `DUP` and `?`, the instructions
-  listed there (except `DD`), `[bx+si+n]` and `name[bx]` operands,
-  `BYTE PTR`/`WORD PTR`, segment prefixes such as `es:[di]`, `OFFSET`, `$`,
-  and `+ - * /` with parentheses in expressions. `MOD`, `SHL`, `AND` and
-  the other word operators are not available in expressions, and neither
-  are `0x1F` numbers (write `1Fh`).
-* `SEGMENT`, `ASSUME`, `ORG`, `PROC`, `ENDP`, `ENDS` and `END` lines are
-  accepted and ignored; a program always starts at its first byte, at
-  `100h`.
-* A character constant is one character (`'A'`); `DB` takes strings.
-* Names are significant to 12 characters, and there can be 300 of them.
-* A name used as an operand before the line that defines it is taken to
-  be a variable or label; an `EQU` number must be defined before use, as
-  with `wkasm`.
-* **Different bytes, same program.** It never chooses a short encoding
-  that depends on a value: displacements are 16 bits, `JMP` is near
-  unless you write `JMP SHORT`, and there are no accumulator short forms.
-  A program built in Code is therefore a few bytes longer than the same
-  source built with `wkasm`, and behaves the same. Conditional jumps are
-  still limited to +-127 bytes.
-
-The system test builds `FIB.ASM`, `COUNT.ASM`, `REVERSE.ASM` and
-`WINDOW.ASM` with it, unchanged, and runs the results.
-
 ## Building and running
 
 | Goal | Command |
@@ -376,7 +345,8 @@ The system test builds `FIB.ASM`, `COUNT.ASM`, `REVERSE.ASM` and
 | Run the system tests | `python scripts/test.py` |
 | Run the assembler self-test | `python scripts/test_wkasm.py` |
 
-Inside WinKit: press Enter on the welcome dialog, open the terminal with F6
+Inside WinKit: wait for the boot screen to finish, press Enter on the
+welcome dialog, open the terminal with F6
 or Start > Terminal, then type the program's name (the `.WKX` is optional).
 Names are 8.3 and case-insensitive. `dir` lists what is on the disk.
 
@@ -391,9 +361,7 @@ sys.path.insert(0, "scripts")
 from qemu import Machine            # scripts/qemu.py
 
 with Machine("out/winkit.img") as m:
-    while m.video_mode() != 0x12:   # desktop is up
-        time.sleep(.2)
-    time.sleep(1)
+    m.wait_desktop()                # the boot screen is over
     m.key("ret")                    # leave the welcome dialog
     m.key("f6")                     # open Terminal
     m.type("hi"); m.key("ret"); time.sleep(.7)
@@ -423,7 +391,6 @@ All of these are in `src/progs/` and are built into the image.
 | `REVERSE.ASM` | reading a line with `AH=3`, indexed data, the full example below |
 | `HI.ASM` | the quick-start program |
 | `WINDOW.ASM` | the minimum windowed program: a window, a button, click and close events |
-| `CODE.ASM` | the editor and assembler: a text editor in a window, reading and saving files, a three-pass 8086 assembler |
 | `SETUP.ASM` | the hard disk installer: a windowed program doing raw sector I/O with BIOS `INT 13h`, with a progress bar |
 | `WKSTORE.ASM` | the WinKit Store: a windowed program (buttons, a list, clicks and keys), polling the serial port, `INT 1Ah` timeouts, `AH=4` to save a file |
 

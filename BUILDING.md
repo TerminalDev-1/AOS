@@ -162,15 +162,15 @@ loop and `INCLUDE`s the rest.
 | `GFX.INC` | clipped rectangles, pixel-accurate text, pointer, window blit |
 | `VIDEO.INC` | the QEMU display driver: widens mode 12h to 848 x 480 |
 | `WIDGETS.INC` | 3D bevels, title gradient, window chrome, icons, table-driven buttons |
-| `SCENES.INC` | desktop and icons, taskbar, Start menu, welcome and Shut Down dialogs |
-| `WINDOWS.INC` | Files / Notes / System bodies, minimize, dragging |
+| `SCENES.INC` | boot screen, desktop and icons, taskbar, Start menu, welcome and Shut Down dialogs |
+| `WINDOWS.INC` | File Manager / Notes / System bodies, minimize, dragging |
 | `FS.INC` | FAT12 driver over BIOS INT 13h: read, write, delete, rename |
-| `STORAGE.INC` | the Files list and `NOTES.TXT` |
+| `STORAGE.INC` | the File Manager's list and actions, and `NOTES.TXT` |
 | `TERM.INC` | the WinKit terminal, its commands, and the INT 80h program interface |
 | `PGUI.INC` | the INT 80h window calls: a program's window, drawing, key and mouse events |
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
 | `VMMOUSE.INC` | the QEMU mouse driver: absolute pointer positions |
-| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE`, the hard disk installer `SETUP`, and the editor and assembler `CODE` |
+| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE` and the hard disk installer `SETUP` |
 
 The desktop uses VGA mode 12h (640x480, or 848x480 under QEMU) with its own
 16-colour palette and
@@ -183,6 +183,16 @@ Plain pointer motion only swaps the arrow using pixels saved underneath it;
 dragging a window copies it with the VGA latches and repaints just the strips
 it uncovered; typing in WinKit redraws only the terminal.
 
+## The boot screen
+
+The first thing on the screen is the boot screen: the WinKit logo, a
+progress bar and "Starting WinKit...". The kernel draws it as soon as it
+has set the video mode, reads the disk and looks for the mouse behind it,
+then fills the bar (about two seconds) and shows the welcome dialog. Keys
+pressed during the boot screen are dropped. It is `boot_screen` and
+`boot_wait` in [`src/SCENES.INC`](src/SCENES.INC); a script that drives
+WinKit waits for it with `Machine.wait_desktop()` (`scripts/qemu.py`).
+
 ## The desktop
 
 | Control | Action |
@@ -190,16 +200,44 @@ it uncovered; typing in WinKit redraws only the terminal.
 | Enter on the welcome dialog | Enter the desktop |
 | Start > Programs | Lists the `.WKX` programs on the disk (up to 16); click one to run it |
 | Desktop shortcuts | Double-click to run: `SETUP`, and every program that was not shipped with WinKit (up to 15, in columns beside the system icons) |
-| Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon, click a `.WKX` in Files to run it |
+| Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon, the File Manager (below) |
 | Arrow keys + Space | Move the pointer and activate its target without a mouse |
-| F1 / F2 / F3 / F6 | Open Files / Notes / System / Terminal |
+| F1 / F2 / F3 / F6 | Open the File Manager / Notes / System / Terminal |
 | F7 | Run the Store (`WKSTORE.WKX`) |
 | F4 | Save Notes to `NOTES.TXT` |
 | F5 | Close the active window |
 | F9 | Open or close the Start menu (Esc closes it) |
-| PgUp / PgDn, R | Page and refresh the Files list |
+| PgUp / PgDn, R | Page and refresh the File Manager's list |
 | F10 | Shut Down |
 | R / P, Enter, Esc in Shut Down | Restart / Power off, OK on the chosen option, Cancel |
+
+## The File Manager
+
+Start > File Manager, the Files icon on the desktop, or F1. It lists the
+files of the disk, nine to a page, with their size in bytes and their kind
+(Program for a `.WKX`, Text for a `.TXT`, File for anything else). Under
+the list is the disk space: a gauge of what is used, and the free and
+total space in KB. The status line shows the number of files or the result
+of the last action, the selected file and the page.
+
+| Control | Action |
+|---|---|
+| Click a file | Select it |
+| Double click, the Open button, or Enter | Run a program; show any other file in the terminal, as `type` does |
+| Copy button | Asks for a name in the status line; Enter makes the copy |
+| Rename button | The same, starting from the present name |
+| Delete button or the Delete key | Asks first: Y, Enter or the button again deletes; any other key does not |
+| Esc | Drop the name or the question |
+| Refresh button or R | Read the disk again |
+| `<` / `>` buttons, PgUp / PgDn | The previous / next page |
+
+A name is typed as `NAME.EXT`: letters, digits, `_` and `-`, at most one
+dot, and it is cut to 8 + 3 characters. Copy and Rename refuse a name that
+is already in use. Delete is final: there is nothing to restore a file
+from. The keys go to the File Manager while it is the active window; the
+arrow keys still move the pointer. There are no folders: the volume has
+one level. A file made in the terminal or saved by Notes or a program
+appears when the File Manager is opened or refreshed.
 
 ## The WinKit terminal
 
@@ -229,36 +267,6 @@ the program a window to draw in with key and mouse events. Drop a new `.ASM` int
 The full reference, with the memory map, the assembler dialect, testing
 recipes and examples, is [docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
 
-## Code: writing programs inside WinKit
-
-**Code** (`CODE.WKX`; desktop shortcut, Start > Programs > CODE, or `code`
-in the terminal) is a source editor with an assembler built in. It opens
-with a complete small program, so F9 works straight away.
-
-| Control | Action |
-|---|---|
-| Type, Enter, Backspace, Delete, Tab | Edit the text |
-| Arrows, Home, End, PgUp, PgDn, or a click | Move the cursor |
-| F2 / Save | Save as `NAME.ASM` (asks for the name the first time) |
-| F3 / Open | Open `NAME.ASM` (a name that does not exist starts a new file) |
-| F5 / Build | Save, assemble, write `NAME.WKX` |
-| F9 / Run | Build, then leave Code and start the program |
-| New | Start again from the opening program |
-| Esc / close button | Leave (asks once if the text is not saved) |
-
-A mistake is reported in the status line as `Line n: what is wrong`, and
-the cursor goes to that line. A program you build gets a desktop shortcut
-and a Start > Programs entry like any installed program. Code reopens the
-file you worked on last. The disk carries the sources of the sample
-programs (`HELLO.ASM`, `COUNT.ASM`, `KEYS.ASM`, `FIB.ASM`, `REVERSE.ASM`,
-`WINDOW.ASM`) to open, change and build.
-
-Limits: one file of up to 12,000 characters; programs up to 16,000 bytes;
-300 names of up to 12 significant characters; lines longer than the
-window scroll sideways. The assembler is a subset of `wkasm`: see "The
-assembler inside WinKit" in
-[docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
-
 ## The WinKit Store
 
 The Store is a window that lists programs, installs the one you pick as
@@ -285,9 +293,8 @@ by typing `wkstore` in the terminal.
 While the Store is open it is the only thing running: like every WinKit
 program it has the machine to itself, so the other windows do not respond
 until it is closed. An installed program stays on the disk: start it any
-time from its **desktop shortcut**, from **Start > Programs**, by clicking
-it in Files (press Refresh if it is not listed yet), or by name in the
-terminal. Run in the Store starts
+time from its **desktop shortcut**, from **Start > Programs**, by
+double-clicking it in the File Manager, or by name in the terminal. Run in the Store starts
 it straight away.
 
 **The Store only carries windowed programs.** The server leaves out any
@@ -308,7 +315,7 @@ answer. The wire protocol is described at the top of `wkstore.py`.
 The files `mkimage.py` puts on the disk carry the FAT "system" attribute,
 except `SETUP.WKX`. The desktop shows a shortcut for every `.WKX` *without*
 that attribute: Setup, plus anything saved later, which is what the Store
-installs (and what `copy` makes in the terminal). Deleting the file removes
+installs (and what Copy in the File Manager or `copy` in the terminal makes). Deleting the file removes
 the shortcut. Nothing else is stored, so shortcuts survive a restart and
 come along when Setup copies the system to a hard disk.
 

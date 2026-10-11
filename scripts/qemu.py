@@ -120,6 +120,26 @@ class Machine:
         with open(path, "rb") as fh:
             return fh.read()[0]
 
+    def view_state(self):
+        """What WinKit is showing: 4 the boot screen, 0 the welcome dialog,
+        1 the desktop, 2 Shut Down, 3 switched off; None before the kernel
+        is in memory. It is the byte after "V4GUIstate" (src/DATA.INC)."""
+        path = os.path.join(self.tmp, "kernel.bin")
+        self.qmp("pmemsave", val=0x10000, size=0x10000, filename=path)
+        with open(path, "rb") as fh:
+            ram = fh.read()
+        at = ram.find(b"V4GUIstate")
+        return ram[at + 10] if at >= 0 else None
+
+    def wait_desktop(self, timeout=30):
+        """Wait until the boot screen is over and the welcome dialog is up."""
+        deadline = time.time() + timeout
+        while self.video_mode() != 0x12 or self.view_state() in (None, 4):
+            if time.time() > deadline:
+                raise AssertionError("desktop did not start")
+            time.sleep(.2)
+        time.sleep(1)
+
     def screenshot(self, path):
         self.qmp("screendump", filename=path, format="png")
 
