@@ -255,12 +255,13 @@ def main():
               "CLOCK.WKX" in out)
         m.key("f1")                          # Files lists them: 10 per column
         time.sleep(1)
-        click(96 + 12 + 200 + 40, 20 + 64 + 18 + 8)  # DICE.WKX, the 12th
+        click(96 + 12 + 200 + 40, 20 + 64 + 8 * 18 + 8)  # DICE.WKX: the 19th
+                                             # file, so column 2, row 9
         time.sleep(1.5)
         check("clicking a program in Files runs it", gui() == (1, "Dice"))
         m.key("esc")
         time.sleep(1)
-        click(96 + 12 + 40, 20 + 64 + 3 * 18 + 8)    # HELLO.WKX, the 4th
+        click(96 + 12 + 40, 20 + 64 + 4 * 18 + 8)    # HELLO.WKX, the 5th
         time.sleep(1.5)
         check("a text program started from Files gets the terminal",
               state()[2] == 4 and
@@ -268,7 +269,7 @@ def main():
         click(30, 466)                       # Start
         click(100, 398)                      # Programs: its list opens
         shot("10-programs")
-        click(178 + 60, 266 + 8 * 18 + 9)    # DICE, the 9th program of 10
+        click(178 + 60, 248 + 9 * 18 + 9)    # DICE, the 10th program of 11
         time.sleep(1.5)
         check("Start > Programs lists the installed programs and runs one",
               gui() == (1, "Dice"))
@@ -298,7 +299,7 @@ def main():
         check("Restart reboots into the desktop", state()[0] == 0)
         click(DLG + 330, 320)
         shot("12-shortcuts")
-        dblclick(124, 96 + 24)               # second column: SETUP, DICE, CLOCK
+        dblclick(124, 176 + 24)              # second column: CODE, SETUP, DICE
         time.sleep(1.5)
         check("an installed program has a desktop shortcut that runs it",
               gui() == (1, "Dice"))
@@ -319,7 +320,7 @@ def main():
         wait_gui()
         state_addr, term_addr = locate()
         click(DLG + 330, 320)                      # OK on the welcome dialog
-        dblclick(124, 16 + 24)               # the Setup shortcut
+        dblclick(124, 96 + 24)               # the Setup shortcut
         time.sleep(1.5)
         check("Setup has a desktop shortcut that opens it",
               gui() == (1, "WinKit Setup"))
@@ -419,6 +420,83 @@ def main():
               "disk (81h) and restarts from it",
               boot_drive() == 0x81 and "SETUP.WKX" in out)
     hda.unlink()
+
+    # ---- Code: write, build and run programs inside WinKit ----
+    with Machine(image) as m:
+        memory = Path(m.tmp) / "ram.bin"
+
+        def program_has(text):
+            """Is this text somewhere in the running program's memory?"""
+            m.qmp("pmemsave", val=0x30000, size=0x10000, filename=str(memory))
+            return text in memory.read_bytes()
+
+        wait_gui()
+        state_addr, term_addr = locate()
+        click(DLG + 330, 320)
+        dblclick(124, 16 + 24)               # the Code shortcut
+        time.sleep(1.5)
+        check("Code has a desktop shortcut and opens with a program in it",
+              gui() == (1, "WinKit Code") and
+              program_has(b"mov dx,OFFSET hello"))
+        m.key("down")                        # add a line of our own...
+        m.key("down")
+        m.key("end")
+        m.key("ret")
+        m.type("    nop")
+        m.key("f9")                          # ...and run: it asks for a name
+        time.sleep(.5)
+        m.type("mine")
+        m.key("ret")
+        time.sleep(3)
+        shot("16-code-ran")
+        check("a program typed in Code is built and run inside WinKit",
+              gui()[0] == 0 and state()[2] == 4 and
+              "Hello from my own program!" in term_text())
+        out = run("dir")
+        check("its source and program are on the disk",
+              "MINE.ASM" in out and "MINE.WKX" in out)
+        run("code")                          # it reopens what was edited last
+        time.sleep(1)
+        m.type("bogus ax")                   # a mistake on line 1
+        m.key("ret")
+        m.key("f5")
+        time.sleep(1.5)
+        shot("17-code-error")
+        check("a mistake is reported with its line number",
+              program_has(b"Line 1: unknown instruction"))
+        m.key("esc")
+        time.sleep(1)
+        for name, keys, expected in (
+                ("fib", "", "0 1 1 2 3 5 8 13 21 34 55 89 144"),
+                ("count", "", "1 2 3 4 5"),
+                ("reverse", "winkit\n", "tikniw")):
+            run("code")
+            time.sleep(1)
+            m.key("f3")                      # Open
+            time.sleep(.4)
+            m.type(name)
+            m.key("ret")
+            time.sleep(1)
+            m.key("f9")                      # build it here and run it
+            time.sleep(2.5)
+            for ch in keys:
+                m.key("ret" if ch == "\n" else ch)
+            time.sleep(1)
+            check(f"{name.upper()}.ASM, the shipped source, builds in Code and "
+                  "runs", expected in term_text())
+        run("code")
+        time.sleep(1)
+        m.key("f3")
+        time.sleep(.4)
+        m.type("window")
+        m.key("ret")
+        time.sleep(1)
+        m.key("f9")
+        time.sleep(2.5)
+        check("a windowed program builds in Code and opens its window",
+              gui() == (1, "Hello window"))
+        click(CX + 60, CY + 30)              # its Quit button
+        time.sleep(1)
 
     print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
 

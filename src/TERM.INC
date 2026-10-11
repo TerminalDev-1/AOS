@@ -537,14 +537,27 @@ cd_pad:
     pop cx
     mov ax,es:[bx+28]
     call term_putnum
-    call term_crlf
     inc dirn
+    test dirn,1                        ; two files to a line
+    jz cd_line
+cd_gap:
+    cmp term_col,25
+    jae cd_next
+    mov al,' '
+    call term_putc
+    jmp cd_gap
+cd_line:
+    call term_crlf
 cd_next:
     add bx,32
     dec cx
     jnz cd_loop
 cd_end:
     pop es
+    test dirn,1
+    jz cd_total
+    call term_crlf
+cd_total:
     mov ax,dirn
     call term_putnum
     mov si,OFFSET t_files
@@ -875,7 +888,8 @@ prog_run ENDP
 
 ; INT 80h: AH = 0 exit, 1 print AL, 2 print DS:DX, 3 wait for a key,
 ; 4 save CX bytes at DS:SI as the file named at DS:DX, 5 exit and run the
-; program named at DS:DX. 10h..15h give the program a window: see PGUI.INC.
+; program named at DS:DX, 6 read the file named at DS:DX into DS:DI.
+; 10h..15h give the program a window: see PGUI.INC.
 sys_call PROC FAR
     sti
     cmp ah,0
@@ -905,6 +919,8 @@ sys_call PROC FAR
     L_JE sys_save
     cmp ah,5
     L_JE sys_chain
+    cmp ah,6
+    L_JE sys_load
     cmp ah,10h
     L_JE sys_gopen
     cmp ah,11h
@@ -1013,6 +1029,35 @@ ss_named:
     mov word ptr [bp+16],0
     mov filesaved,1
 ss_done:
+    push cs
+    pop es
+    jmp sys_back
+sys_load:
+    mov word ptr [bp+16],0ffffh        ; AX = FFFFh: there is no such file
+    mov es,[bp+2]
+    mov si,[bp+10]                     ; DX = name
+    mov di,OFFSET arg1
+    mov cx,13
+    call gui_copy
+    push cs
+    pop es
+    mov si,OFFSET arg1
+    call file_read                     ; the file, in the kernel's buffer
+    L_JC sys_back
+    mov cx,[bp+12]                     ; CX = room in the caller's buffer
+    cmp ax,cx
+    jae sl_fits
+    mov cx,ax
+sl_fits:
+    mov [bp+16],cx                     ; AX = bytes read
+    push ds
+    mov di,[bp+6]                      ; caller's DS:DI
+    mov es,[bp+2]
+    mov ax,FSSEG
+    mov ds,ax
+    mov si,BUF_OFS
+    rep movsb
+    pop ds
     push cs
     pop es
     jmp sys_back

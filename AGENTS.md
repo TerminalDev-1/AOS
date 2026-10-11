@@ -12,18 +12,18 @@ rest of DOS is there too. It is not. In particular, none of these exist:
 
 | Does not exist in WinKit | What is true instead |
 |---|---|
-| `INT 21h` (any function), `INT 20h`, `INT 27h` | programs use `INT 80h`, which has twelve functions (text, keys, save a file, run another program, one window) |
+| `INT 21h` (any function), `INT 20h`, `INT 27h` | programs use `INT 80h`, which has thirteen functions (text, keys, save a file, read a file, run another program, one window) |
 | `.COM` / `.EXE` programs, MZ headers | programs are flat `.WKX` binaries (`ORG 100h`, no header) |
 | a PSP, a command tail, `argc`/`argv`, an environment block | programs receive **no arguments at all** |
 | `COMMAND.COM`, `AUTOEXEC.BAT`, `CONFIG.SYS`, batch files | the shell is the WinKit terminal inside the desktop |
 | drive letters, `A:\>`, paths, subdirectories | one flat root directory, prompt is `winkit> ` |
 | DOS utilities (`FORMAT`, `CHKDSK`, `EDIT`, `MORE`, `DEBUG`...) | the terminal has the commands in the README, and no others |
-| a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); a program can save one whole file (`INT 80h` `AH=4`) and nothing else |
+| a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); a program can save a whole file (`INT 80h` `AH=4`) or read a whole file (`AH=6`), and nothing else |
 | a network, TCP/IP, sockets, a modem dialler, an internet app store | `WKSTORE.WKX` fetches programs over the serial port (COM1) from `scripts/wkstore.py` on the host |
 | a windowing API (message loops, several windows, controls, bitmaps, fonts) | a program may open **one** fixed window and draw rectangles, bevels and text in it (`INT 80h` `AH=10h`-`15h`) |
 | `FDISK`, `FORMAT`, `SYS`, partitions, an MBR, a boot manager | `SETUP.WKX` copies the running system over the whole first hard disk; there is no partition table |
 | TSRs, device drivers, `INT 21h AH=31h` | not supported |
-| MASM, LINK, EXE2BIN, DOSBox | `scripts/wkasm.py`, pure Python |
+| MASM, LINK, EXE2BIN, DOSBox | `scripts/wkasm.py`, pure Python, on the host; inside WinKit, the assembler built into Code (`CODE.WKX`), which takes a subset of the same source |
 
 Things that are *not* DOS even though they may look like it:
 
@@ -58,7 +58,7 @@ Do this for **every feature or fix, without being asked**. Do not stop to ask
 whether to commit or push; the owner has already said yes.
 
 1. Build: `python scripts/mkimage.py`.
-2. Test: `python scripts/test.py` (about five minutes) and
+2. Test: `python scripts/test.py` (about seven minutes) and
    `python scripts/test_wkasm.py`. Add or
    update a check in `scripts/test.py` for what you changed.
 3. If a test fails, fix it first. Never commit or push a failing tree.

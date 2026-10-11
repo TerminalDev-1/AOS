@@ -25,6 +25,9 @@ and the kernel's own FAT12 driver.
   program you install gets a shortcut on the desktop.
 - **WinKit terminal:** `help dir type echo copy ren del cls ver time mem
   reboot exit`, `echo TEXT > FILE`, and it runs native `.WKX` programs.
+- **Code:** an editor with a built-in assembler (`CODE.WKX`, on the
+  desktop). Write a program, press F9, and it is built and run inside
+  WinKit, with no other computer involved.
 - **Setup:** `SETUP.WKX` (desktop shortcut, or Start > Programs > SETUP)
   installs WinKit on a hard disk and can restart straight into it; the
   hard disk then boots without the floppy.
@@ -66,6 +69,10 @@ is organised.
 > **WinKit is not DOS and will never be DOS.** AI agents and newcomers: read
 > [AGENTS.md](AGENTS.md) first, so you do not assume DOS features that do not
 > exist here.
+
+The quickest way is inside WinKit: open **Code** on the desktop, type, and
+press F9. To build programs on your own computer instead, or to learn the
+system calls, read on.
 
 WinKit runs its own native programs (`.WKX`). The complete guide, written for
 both people and AI agents, is

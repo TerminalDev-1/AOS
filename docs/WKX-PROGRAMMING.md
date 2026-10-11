@@ -101,6 +101,7 @@ registers are preserved** (flags too), except where noted.
 | `03h` | read key | | `AL` = ASCII, `AH` = BIOS scan code (clobbered) |
 | `04h` | save file | `DS:DX` -> NUL-terminated name, `DS:SI` -> data, `CX` = bytes | `AX` = 0 saved, 1 failed (clobbered) |
 | `05h` | run another program | `DS:DX` -> NUL-terminated file name | returns only on failure, with `AX` = 1 |
+| `06h` | read file | `DS:DX` -> NUL-terminated name, `DS:DI` -> buffer, `CX` = its size | `AX` = bytes read, or `FFFFh` if there is no such file |
 | `10h` | open window | `DS:DX` -> NUL-terminated title | |
 | `11h` | fill rectangle | `BX`,`CX` = x,y; `SI`,`DI` = width,height; `AL` = colour | |
 | `12h` | draw text | `BX`,`CX` = x,y; `AL` = colour; `DS:DX` -> NUL-terminated string | |
@@ -137,8 +138,17 @@ Terminal window.
 replacing any file of that name. The name is an 8.3 name such as
 `'NOTE.TXT',0` (at most 23 characters are read) and `CX` may be up to 53,248. It
 fails (`AX` = 1) when the name is empty, the size is too large, the disk or
-the root directory is full, or the disk cannot be written. This is the only
-file service: a program cannot read, list, append to or delete files.
+the root directory is full, or the disk cannot be written.
+
+### Reading a file
+
+`AH=6` copies the file named at `DS:DX` to the buffer at `DS:DI`, at most
+`CX` bytes of it, and returns the number of bytes copied in `AX`. A file
+longer than the buffer is cut short without a warning, so give a buffer as
+large as the file can be. `AX` = `FFFFh` means there is no such file.
+
+Saving and reading whole files are the only file services: a program
+cannot list, append to, rename or delete files.
 
 ### Running another program
 
@@ -257,7 +267,7 @@ reads a key with `AH=3` gets the terminal window opened for it.
 
 ### Things the system does not provide
 
-No file reading, no graphics outside that one window, no bitmaps, no timer, no memory allocator, no arguments, no DOS
+No directory listing, no graphics outside that one window, no bitmaps, no timer, no memory allocator, no arguments, no DOS
 calls (`INT 21h` does not exist; there is no DOS). A program that needs more
 can use the BIOS directly, since it has the whole machine:
 
@@ -324,6 +334,38 @@ python scripts/wkasm.py src/progs/HI.ASM -m            # also print the symbols
 Error messages name the file and line: `HI.ASM(12): jump out of range by 9
 byte(s)`.
 
+## The assembler inside WinKit
+
+The Code editor (`CODE.WKX`, see [BUILDING.md](../BUILDING.md)) has its own
+assembler, written in WinKit assembly, so programs can be built without a
+host computer. It reads the same kind of source as `wkasm`, with these
+differences:
+
+* **No `MACRO`, no `INCLUDE`.** Everything else in the table above works:
+  labels, `EQU`, `DB`/`DW` with strings, `DUP` and `?`, the instructions
+  listed there (except `DD`), `[bx+si+n]` and `name[bx]` operands,
+  `BYTE PTR`/`WORD PTR`, segment prefixes such as `es:[di]`, `OFFSET`, `$`,
+  and `+ - * /` with parentheses in expressions. `MOD`, `SHL`, `AND` and
+  the other word operators are not available in expressions, and neither
+  are `0x1F` numbers (write `1Fh`).
+* `SEGMENT`, `ASSUME`, `ORG`, `PROC`, `ENDP`, `ENDS` and `END` lines are
+  accepted and ignored; a program always starts at its first byte, at
+  `100h`.
+* A character constant is one character (`'A'`); `DB` takes strings.
+* Names are significant to 12 characters, and there can be 300 of them.
+* A name used as an operand before the line that defines it is taken to
+  be a variable or label; an `EQU` number must be defined before use, as
+  with `wkasm`.
+* **Different bytes, same program.** It never chooses a short encoding
+  that depends on a value: displacements are 16 bits, `JMP` is near
+  unless you write `JMP SHORT`, and there are no accumulator short forms.
+  A program built in Code is therefore a few bytes longer than the same
+  source built with `wkasm`, and behaves the same. Conditional jumps are
+  still limited to +-127 bytes.
+
+The system test builds `FIB.ASM`, `COUNT.ASM`, `REVERSE.ASM` and
+`WINDOW.ASM` with it, unchanged, and runs the results.
+
 ## Building and running
 
 | Goal | Command |
@@ -381,6 +423,7 @@ All of these are in `src/progs/` and are built into the image.
 | `REVERSE.ASM` | reading a line with `AH=3`, indexed data, the full example below |
 | `HI.ASM` | the quick-start program |
 | `WINDOW.ASM` | the minimum windowed program: a window, a button, click and close events |
+| `CODE.ASM` | the editor and assembler: a text editor in a window, reading and saving files, a three-pass 8086 assembler |
 | `SETUP.ASM` | the hard disk installer: a windowed program doing raw sector I/O with BIOS `INT 13h`, with a progress bar |
 | `WKSTORE.ASM` | the WinKit Store: a windowed program (buttons, a list, clicks and keys), polling the serial port, `INT 1Ah` timeouts, `AH=4` to save a file |
 

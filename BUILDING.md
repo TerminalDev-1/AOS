@@ -170,7 +170,7 @@ loop and `INCLUDE`s the rest.
 | `PGUI.INC` | the INT 80h window calls: a program's window, drawing, key and mouse events |
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
 | `VMMOUSE.INC` | the QEMU mouse driver: absolute pointer positions |
-| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE`, and the hard disk installer `SETUP` |
+| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE`, the hard disk installer `SETUP`, and the editor and assembler `CODE` |
 
 The desktop uses VGA mode 12h (640x480, or 848x480 under QEMU) with its own
 16-colour palette and
@@ -213,6 +213,9 @@ Open it from the Start menu or with F6.
 | `echo TEXT` / `echo TEXT > FILE` | print text / write a file |
 | `copy A B`, `ren A B`, `del FILE` | copy, rename, delete |
 | `cls`, `ver`, `time`, `mem`, `reboot`, `exit` | housekeeping |
+
+`dir` lists two files to a line, so that a fuller disk still fits the
+16-row screen.
 | `NAME` or `NAME.WKX` | run a native program |
 
 ### Native programs (`.WKX`)
@@ -225,6 +228,36 @@ the program a window to draw in with key and mouse events. Drop a new `.ASM` int
 
 The full reference, with the memory map, the assembler dialect, testing
 recipes and examples, is [docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
+
+## Code: writing programs inside WinKit
+
+**Code** (`CODE.WKX`; desktop shortcut, Start > Programs > CODE, or `code`
+in the terminal) is a source editor with an assembler built in. It opens
+with a complete small program, so F9 works straight away.
+
+| Control | Action |
+|---|---|
+| Type, Enter, Backspace, Delete, Tab | Edit the text |
+| Arrows, Home, End, PgUp, PgDn, or a click | Move the cursor |
+| F2 / Save | Save as `NAME.ASM` (asks for the name the first time) |
+| F3 / Open | Open `NAME.ASM` (a name that does not exist starts a new file) |
+| F5 / Build | Save, assemble, write `NAME.WKX` |
+| F9 / Run | Build, then leave Code and start the program |
+| New | Start again from the opening program |
+| Esc / close button | Leave (asks once if the text is not saved) |
+
+A mistake is reported in the status line as `Line n: what is wrong`, and
+the cursor goes to that line. A program you build gets a desktop shortcut
+and a Start > Programs entry like any installed program. Code reopens the
+file you worked on last. The disk carries the sources of the sample
+programs (`HELLO.ASM`, `COUNT.ASM`, `KEYS.ASM`, `FIB.ASM`, `REVERSE.ASM`,
+`WINDOW.ASM`) to open, change and build.
+
+Limits: one file of up to 12,000 characters; programs up to 16,000 bytes;
+300 names of up to 12 significant characters; lines longer than the
+window scroll sideways. The assembler is a subset of `wkasm`: see "The
+assembler inside WinKit" in
+[docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
 
 ## The WinKit Store
 
