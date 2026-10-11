@@ -369,7 +369,8 @@ chrome ENDP
 ; ---- icons: icx/icy = top-left, AL = kind ----
 ; 1 folder, 2 document, 3 computer, 4 power, 5 terminal, 6 store,
 ; 7 program (16x16);
-; 11 folder, 12 document, 13 computer, 14 terminal, 15 store (32x32).
+; 11 folder, 12 document, 13 computer, 14 terminal, 15 store,
+; 16 program (32x32).
 draw_icon PROC NEAR
     push ax
     cmp al,1
@@ -444,6 +445,8 @@ di_k13:
     L_JE di_k6
     cmp al,7
     L_JE di_k7
+    cmp al,16
+    L_JE di_k16
     IBOX 1,1,30,22,K_BLACK
     IBOX 2,2,28,20,K_FACE
     IBOX 4,4,24,14,K_SHADOW
@@ -489,6 +492,15 @@ di_k7:                                 ; a small window
     IBOX 0,1,16,14,K_BLACK
     IBOX 1,2,14,12,K_WHITE
     IBOX 1,2,14,3,K_NAVY
+    jmp di_done
+di_k16:                                ; a window with a title bar
+    IBOX 1,3,30,26,K_BLACK
+    IBOX 2,4,28,24,K_WHITE
+    IBOX 2,4,28,6,K_NAVY
+    IBOX 25,5,4,4,K_FACE
+    IBOX 5,14,14,2,K_SHADOW
+    IBOX 5,19,20,2,K_SHADOW
+    IBOX 5,24,10,2,K_SHADOW
 di_done:
     pop ax
     ret

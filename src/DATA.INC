@@ -217,6 +217,10 @@ subopen db 0                           ; Programs list showing
 subhot db 0ffh                         ; highlighted program, FF = none
 progcount dw 0                         ; .WKX programs found by prog_scan
 progptr dw SUB_MAX dup (0)             ; their names in files[]
+deskcount dw 0                         ; programs with a desktop shortcut
+deskptr dw DESK_MAX dup (0)
+dcolx dw 0                             ; x of a desktop icon's column
+filesaved db 0                         ; a program saved a file
 
 cmdtab dw OFFSET c_help,OFFSET cmd_help
        dw OFFSET c_dir,OFFSET cmd_dir
@@ -246,8 +250,8 @@ c_mem db 'mem',0
 c_reboot db 'reboot',0
 c_exit db 'exit',0
 t_prompt db 'winkit> ',0
-t_banner db 'WinKit 1.0   type help for the commands',0
-t_ver db 'WinKit 1.0 - V4.0 desktop, standalone 16-bit',0
+t_banner db 'WinKit-preview   type help for the commands',0
+t_ver db 'WinKit-preview - standalone 16-bit system',0
 t_mem db ' KB conventional memory',0
 t_files db ' file(s), ',0
 t_free db ' KB free',0
@@ -364,19 +368,19 @@ mn_progs db 'Programs',0
 s_arrow db '>',0
 s_noprogs db '(none)',0
 mn_shut db 'Shut Down...',0
-banner db 'V4.0',0
-logo db 'V4',0
+banner db 'WinKit-preview',0
+logo db 'WK',0
 menuptr dw OFFSET mn_files,OFFSET mn_notes,OFFSET mn_system,OFFSET mn_term
         dw OFFSET mn_store,OFFSET mn_progs,OFFSET mn_shut
 
 ttl_files db 'Files - boot disk',0
 ttl_notes db 'Notes - NOTES.TXT',0
 ttl_system db 'System Properties',0
-ttl_welcome db 'Welcome to V4.0',0
+ttl_welcome db 'Welcome to WinKit-preview',0
 ttl_shut db 'Shut Down',0
 ttl_term db 'WinKit',0
 
-w_title db 'V4.0',0
+w_title db 'WinKit-preview',0
 w_sub db 'A standalone graphical operating system',0
 w_body db 'Files, notes and the WinKit terminal.',0
 w_hint db 'Press Enter to open the desktop.',0
@@ -400,7 +404,7 @@ n_sub db 'Plain text, up to 240 characters',0
 
 sy_tab db 'General',0
 sy_h1 db 'System:',0
-sy_a1 db 'V4.0 Desktop',0
+sy_a1 db 'WinKit-preview desktop',0
 sy_a2 db 'Standalone: boots without a DOS kernel',0
 sy_h2 db 'Computer:',0
 sy_b1 db 'VGA 640 x 480, 16 colours',0

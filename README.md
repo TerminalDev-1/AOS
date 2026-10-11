@@ -21,7 +21,8 @@ and the kernel's own FAT12 driver.
   minimize and close, flicker-free window dragging.
 - **Apps:** Files (lists the disk), Notes (a text editor that saves to disk),
   System Properties, the WinKit terminal, and the Store. Start > Programs
-  lists every program on the disk and runs it with a click.
+  lists every program on the disk and runs it with a click, and every
+  program you install gets a shortcut on the desktop.
 - **WinKit terminal:** `help dir type echo copy ren del cls ver time mem
   reboot exit`, `echo TEXT > FILE`, and it runs native `.WKX` programs.
 - **Setup:** `SETUP.WKX` (Start > Programs > SETUP) installs WinKit on a
@@ -49,6 +50,9 @@ there is no third-party tool chain.
     python scripts/test.py           # boot it headless and check every feature
     python scripts/test_wkasm.py     # self-test of the assembler
     python scripts/showcase.py       # screenshots of every feature
+
+The 640x480 screen is scaled to fill the QEMU window; add `--fullscreen` to
+`run.py` to fill the monitor. The system calls itself **WinKit-preview**.
 
 See [BUILDING.md](BUILDING.md) for the controls, the terminal and how the code
 is organised.

@@ -44,6 +44,8 @@ SUB_X     EQU 178    ; the Programs list beside the Start menu
 SUB_W     EQU 152
 SUB_ROW   EQU 18
 SUB_MAX   EQU 16     ; programs it can show
+DESK_SYS  EQU 5      ; desktop icons of the system itself
+DESK_MAX  EQU 15     ; program shortcuts: three more columns of five
 
 WEL_X     EQU 120
 WEL_Y     EQU 96

@@ -1,4 +1,5 @@
-; V4.0 desktop and the WinKit terminal - a standalone 16-bit system.
+; WinKit-preview: the desktop and the WinKit terminal - a standalone 16-bit
+; system.
 ; Real-mode 8086 assembly (MASM 5.10), no libraries. It draws straight to
 ; planar VGA memory in mode 12h (640x480, 16 colours) and uses a BIOS PS/2
 ; callback for the mouse and BIOS disk services for the FAT12 volume, so

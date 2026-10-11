@@ -48,24 +48,48 @@ paint_desktop PROC NEAR
     mov pi,0
 pd_icon:
     mov ax,pi
-    mov cx,80
-    mul cx
-    add ax,16
+    call icon_place
     mov icy,ax
-    mov icx,28
+    mov ax,dcolx
+    add ax,28
+    mov icx,ax
     mov ax,pi
+    cmp ax,DESK_SYS
+    jae pd_short
     add ax,11                          ; 11..15: folder, document, computer,
-                                       ; terminal, store
-    call draw_icon
+    call draw_icon                     ; terminal, store
     mov bx,pi
     shl bx,1
     mov si,iconlbl[bx]
+    jmp pd_label
+pd_short:
+    mov al,16                          ; a program: its name without ".WKX"
+    call draw_icon
+    mov bx,pi
+    sub bx,DESK_SYS
+    shl bx,1
+    mov si,deskptr[bx]
+    mov di,OFFSET linebuf
+pd_name:
+    lodsb
+    cmp al,'.'
+    je pd_named
+    or al,al
+    jz pd_named
+    mov [di],al
+    inc di
+    jmp pd_name
+pd_named:
+    mov byte ptr [di],0
+    mov si,OFFSET linebuf
+pd_label:
     call strlen
     mov ax,cx
     shl ax,1
     shl ax,1
     shl ax,1                           ; label width in pixels
-    mov bx,44
+    mov bx,dcolx
+    add bx,44
     mov dx,ax
     shr dx,1
     sub bx,dx
@@ -89,13 +113,17 @@ pd_icon:
     mov ink,K_NAVY
     call rect
 pd_plain:
-    mov ctrx,44
+    mov ax,dcolx
+    add ax,44
+    mov ctrx,ax
     mov ax,icy
     add ax,38
     mov ty,ax
     call textc
     inc pi
-    cmp pi,5
+    mov ax,deskcount
+    add ax,DESK_SYS
+    cmp pi,ax
     L_JB pd_icon
     ret
 paint_desktop ENDP
@@ -393,7 +421,7 @@ paint_welcome PROC NEAR
     mov icy,136
     mov al,13
     call draw_icon
-    TXTBIG 196,124,K_NAVY,3,w_title
+    TXTBIG 196,132,K_NAVY,2,w_title
     TXT 196,184,K_BLACK,w_sub
     TXT 196,208,K_BLACK,w_body
     TXT 196,240,K_SHADOW,w_hint

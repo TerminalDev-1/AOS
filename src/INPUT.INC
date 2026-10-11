@@ -297,17 +297,18 @@ icon_click PROC NEAR
     mov fk,0
 ic_loop:
     mov ax,fk
-    mov cx,80
-    mul cx
-    add ax,16
+    call icon_place
     mov bx,ax
-    mov ax,12
+    mov ax,dcolx
+    add ax,12
     mov cx,64
     mov dx,58
     call pt_in
     jc ic_hit
     inc fk
-    cmp fk,5
+    mov ax,deskcount
+    add ax,DESK_SYS
+    cmp fk,ax
     jb ic_loop
     mov iconsel,0
     ret
@@ -319,7 +320,7 @@ ic_hit:
     pop es
     mov bx,ax
     mov cl,byte ptr fk
-    inc cl                             ; icon number 1..5
+    inc cl                             ; icon number, from 1
     cmp cl,iconsel
     jne ic_select
     sub ax,lastclk
@@ -327,11 +328,19 @@ ic_hit:
     ja ic_select
     mov iconsel,0
     mov al,cl
-    cmp al,5
+    cmp al,DESK_SYS
+    ja ic_short
     jne ic_open
     mov al,A_STORE
 ic_open:
     jmp do_action
+ic_short:                              ; a program shortcut: run it
+    xor bx,bx
+    mov bl,al
+    sub bx,DESK_SYS+1
+    shl bx,1
+    mov si,deskptr[bx]
+    jmp run_named
 ic_select:
     mov iconsel,cl
     mov lastclk,bx

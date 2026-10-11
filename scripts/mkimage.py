@@ -31,11 +31,14 @@ MAX_KERNEL = 120                      # sectors; the loader stops at 64 KB
 BOOT_RSVD = 14                        # offsets inside the boot sector
 BOOT_KSECTS = 62
 DATE_1980_01_01 = 0x0021
+ATTR_ARCHIVE = 0x20
+ATTR_SYSTEM = 0x04                    # part of WinKit: no desktop shortcut
+SHORTCUTS = {"SETUP.WKX"}             # shipped files that do get one
 
-README = (b"WinKit\r\n"
-          b"======\r\n"
+README = (b"WinKit-preview\r\n"
+          b"==============\r\n"
           b"\r\n"
-          b"This disk boots straight into the V4.0 desktop; there is no DOS.\r\n"
+          b"This disk boots straight into the WinKit desktop; there is no DOS.\r\n"
           b"\r\n"
           b"Open the WinKit terminal from the Start menu or with F6 and try:\r\n"
           b"  dir\r\n"
@@ -90,7 +93,9 @@ def build_image(kernel, boot, files):
         next_cluster += need
         entry = bytearray(32)
         entry[0:11] = name83(name)
-        entry[11] = 0x20
+        entry[11] = ATTR_ARCHIVE
+        if name.upper() not in SHORTCUTS:
+            entry[11] |= ATTR_SYSTEM
         struct.pack_into("<H", entry, 16, DATE_1980_01_01)
         struct.pack_into("<H", entry, 24, DATE_1980_01_01)
         struct.pack_into("<H", entry, 26, first)

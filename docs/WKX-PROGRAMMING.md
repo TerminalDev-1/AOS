@@ -246,7 +246,8 @@ END start
 ```
 
 A program is started from Start > Programs (every `.WKX` on the disk is
-listed there, so yours appears as soon as it is on the disk), by clicking
+listed there, so yours appears as soon as it is on the disk), from its
+desktop shortcut if it was installed after the image was built, by clicking
 it in the Files window, by name in the terminal, or by another program
 with `AH=5`. The Store (`WKSTORE.WKX`) is
 the one program that also has a Start menu entry, a desktop icon and a key

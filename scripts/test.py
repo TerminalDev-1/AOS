@@ -96,6 +96,14 @@ def main():
             mouse(x, y, False)
             time.sleep(.5)
 
+        def dblclick(x, y):
+            mouse(x, y)
+            for down in (True, False, True, False):
+                m.qmp("input-send-event", events=[
+                    {"type": "btn", "data": {"button": "left", "down": down}}])
+                time.sleep(.15)
+            time.sleep(.5)
+
         def run(command, wait=.6):
             m.type("cls")                # so only this command's output shows
             m.key("ret")
@@ -254,10 +262,17 @@ def main():
         state_addr, term_addr = locate()
         check("Restart reboots into the desktop", state()[0] == 0)
         click(330, 320)
+        shot("12-shortcuts")
+        dblclick(124, 96 + 24)               # second column: SETUP, DICE, CLOCK
+        time.sleep(1.5)
+        check("an installed program has a desktop shortcut that runs it",
+              gui() == (1, "Dice"))
+        m.key("esc")
+        time.sleep(1)
         m.key("f6")
         out = run("type notes.txt")
         check("files survive the reboot", "Assembly GUI notes" in out)
-        shot("12-after-reboot")
+        shot("13-after-reboot")
 
     # ---- Setup: install on an empty hard disk, then start from it ----
     hda = ROOT / "out" / "test-hda.img"
@@ -268,16 +283,15 @@ def main():
         memory = Path(m.tmp) / "ram.bin"
         wait_gui()
         state_addr, term_addr = locate()
-        m.key("ret")
-        m.key("f6")
-        m.type("setup")
-        m.key("ret")
+        click(330, 320)                      # OK on the welcome dialog
+        dblclick(124, 16 + 24)               # the Setup shortcut
         time.sleep(1.5)
-        check("Setup opens its window", gui() == (1, "WinKit Setup"))
+        check("Setup has a desktop shortcut that opens it",
+              gui() == (1, "WinKit Setup"))
         m.key("ret")                         # Install
         m.key("ret")                         # ...and again to confirm
         time.sleep(1)
-        shot("13-setup")
+        shot("14-setup")
         m.key("esc")                         # read once the copy is over
         deadline = time.time() + 180
         while gui()[0]:
@@ -306,7 +320,7 @@ def main():
         m.type("setup")
         m.key("ret")
         time.sleep(1.5)
-        shot("14-from-hard-disk")
+        shot("15-from-hard-disk")
         m.key("ret")                         # must not offer to install
         m.key("ret")
         m.key("esc")

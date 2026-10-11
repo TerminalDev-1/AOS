@@ -779,7 +779,7 @@ in_sent:
     int 80h
     or ax,ax
     jnz in_disk
-    mov di,OFFSET msg                  ; "Installed NAME.WKX. See Start ..."
+    mov di,OFFSET msg                  ; "Installed NAME.WKX. It is on ..."
     mov si,OFFSET t_done1
     call put_str
     mov si,OFFSET fname
@@ -861,7 +861,7 @@ t_hint    db 'Select a program, then Install and Run.',0
 t_empty   db 'The store is empty.',0
 t_getting db 'Downloading ',0
 t_done1   db 'Installed ',0
-t_done2   db '. See Start > Programs.',0
+t_done2   db '. It is on the desktop.',0
 t_notyet  db ' is not installed yet: press Install.',0
 t_noport  db 'This machine has no serial port (COM1).',0
 t_disk    db 'Could not save: disk error or disk full.',0

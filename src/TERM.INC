@@ -694,7 +694,7 @@ cmd_copy PROC NEAR
     mov si,OFFSET arg2
     call file_write
     jc cc_fail
-    ret
+    jmp refresh_files
 cc_usage:
     mov si,OFFSET t_usage_copy
     jmp cc_say
@@ -718,7 +718,7 @@ cmd_del PROC NEAR
     mov si,OFFSET arg1
     call file_delete
     jc cdl_missing
-    ret
+    jmp refresh_files
 cdl_usage:
     mov si,OFFSET t_usage_del
     jmp cdl_say
@@ -742,7 +742,7 @@ cmd_ren PROC NEAR
     mov di,OFFSET arg2
     call file_rename
     jc cr_fail
-    ret
+    jmp refresh_files
 cr_usage:
     mov si,OFFSET t_usage_ren
     jmp cr_say
@@ -783,6 +783,11 @@ cr_load:
     call run_file
     jc cr_bad
     mov termdirty,1
+    cmp filesaved,0                    ; it may have installed a program
+    je cr_ran
+    mov filesaved,0
+    call refresh_files
+cr_ran:
     ret
 cr_bad:
     mov si,OFFSET t_badcmd
@@ -1006,6 +1011,7 @@ ss_named:
     call file_write
     jc ss_done
     mov word ptr [bp+16],0
+    mov filesaved,1
 ss_done:
     push cs
     pop es

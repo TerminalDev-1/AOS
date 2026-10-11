@@ -46,8 +46,10 @@ rf_done:
     ret
 refresh_files ENDP
 
-; List the programs in files[] for the Start menu: every .WKX except the
-; Store, which has its own entry. progptr[] points at their names.
+; List the programs in files[]: every .WKX except the Store, which has its
+; own entries. progptr[] (Start > Programs) gets all of them; deskptr[]
+; (desktop shortcuts) gets those without the "system" attribute, which is
+; everything that was not shipped as part of WinKit, and SETUP.
 prog_scan PROC NEAR
     push ax
     push bx
@@ -58,12 +60,11 @@ prog_scan PROC NEAR
     push ds
     pop es
     mov progcount,0
+    mov deskcount,0
     mov cx,filecount
     mov si,OFFSET files+1
     jcxz pgs_done
 pgs_next:
-    cmp progcount,SUB_MAX
-    jae pgs_done
     mov bx,si
 pgs_dot:
     mov al,[bx]
@@ -84,10 +85,21 @@ pgs_dot:
     pop cx
     pop si
     je pgs_skip
+    cmp progcount,SUB_MAX
+    jae pgs_desk
     mov bx,progcount
     shl bx,1
     mov progptr[bx],si
     inc progcount
+pgs_desk:
+    test byte ptr [si-1],4             ; attribute: system = no shortcut
+    jnz pgs_skip
+    cmp deskcount,DESK_MAX
+    jae pgs_skip
+    mov bx,deskcount
+    shl bx,1
+    mov deskptr[bx],si
+    inc deskcount
 pgs_skip:
     add si,14
     loop pgs_next
@@ -150,6 +162,26 @@ fcl_dot:
 fcl_done:
     ret
 files_click ENDP
+
+; Desktop icon AX (0..4 the system's, 5.. program shortcuts): dcolx = x of
+; its column, AX = y. Five icons to a column.
+icon_place PROC NEAR
+    push bx
+    push dx
+    xor dx,dx
+    mov bx,5
+    div bx                             ; AX = column, DX = row
+    push dx
+    mov bx,80
+    mul bx
+    mov dcolx,ax
+    pop ax
+    mul bx
+    add ax,16
+    pop dx
+    pop bx
+    ret
+icon_place ENDP
 
 next_files PROC NEAR
     mov ax,filepage

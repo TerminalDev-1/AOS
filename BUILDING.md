@@ -9,6 +9,14 @@
 
 Add `--snapshot` to `run.py` to discard disk writes when QEMU exits.
 
+`run.py` asks QEMU to scale WinKit's 640x480 screen to the size of its
+window (`-display gtk,zoom-to-fit=on`), so resizing or maximizing the
+window enlarges the desktop instead of leaving it as a small rectangle.
+`--fullscreen` starts on the whole monitor; Ctrl+Alt+F leaves full screen
+and Ctrl+Alt+G releases the mouse. This is a setting of the emulator's
+window: WinKit itself still draws 640x480 in VGA mode 12h and has no
+higher-resolution video driver.
+
 ## Installing on a hard disk
 
     python scripts/run.py --hda out/disk.img           # floppy + an empty hard disk
@@ -82,6 +90,7 @@ it uncovered; typing in WinKit redraws only the terminal.
 |---|---|
 | Enter on the welcome dialog | Enter the desktop |
 | Start > Programs | Lists the `.WKX` programs on the disk (up to 16); click one to run it |
+| Desktop shortcuts | Double-click to run: `SETUP`, and every program that was not shipped with WinKit (up to 15, in columns beside the system icons) |
 | Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon, click a `.WKX` in Files to run it |
 | Arrow keys + Space | Move the pointer and activate its target without a mouse |
 | F1 / F2 / F3 / F6 | Open Files / Notes / System / WinKit |
@@ -144,8 +153,9 @@ by typing `wkstore` in the terminal.
 While the Store is open it is the only thing running: like every WinKit
 program it has the machine to itself, so the other windows do not respond
 until it is closed. An installed program stays on the disk: start it any
-time from **Start > Programs**, by clicking it in Files (press Refresh if
-it is not listed yet), or by name in the terminal. Run in the Store starts
+time from its **desktop shortcut**, from **Start > Programs**, by clicking
+it in Files (press Refresh if it is not listed yet), or by name in the
+terminal. Run in the Store starts
 it straight away.
 
 **The Store only carries windowed programs.** The server leaves out any
@@ -160,6 +170,15 @@ Reload in the Store; nothing needs rebuilding. `python scripts/wkstore.py --list
 prints the catalogue. The store holds at most 64 programs of up to 52 KB.
 Without `--store`, the Store waits three seconds and says the server did not
 answer. The wire protocol is described at the top of `wkstore.py`.
+
+### Which programs get a desktop shortcut
+
+The files `mkimage.py` puts on the disk carry the FAT "system" attribute,
+except `SETUP.WKX`. The desktop shows a shortcut for every `.WKX` *without*
+that attribute: Setup, plus anything saved later, which is what the Store
+installs (and what `copy` makes in the terminal). Deleting the file removes
+the shortcut. Nothing else is stored, so shortcuts survive a restart and
+come along when Setup copies the system to a hard disk.
 
 ## The assembler
 
