@@ -49,10 +49,14 @@ file does not exist. In WinKit, open Start > Programs > SETUP (or type
 `setup` in the terminal) and press Install twice: once to ask, once to
 confirm. Setup (`src/progs/SETUP.ASM`) copies the disk WinKit was started
 from, sector by sector, to the first hard disk and writes that disk's
-geometry into the boot sector. It takes a few seconds. With `--boot c` the
-floppy is left out of the machine and WinKit starts from the hard disk,
-with everything that was on the floppy at the time, installed programs
-included.
+geometry into the boot sector. It takes a few seconds. When it is done the
+Install button becomes **Restart**: press it and the machine starts from
+the hard disk at once, floppy still in the drive (Setup loads the hard
+disk's boot sector itself, so the BIOS boot order does not matter). The
+hard disk has everything that was on the floppy at the time, installed
+programs included. On later runs use `--boot c`, which leaves the floppy
+out of the machine; the ordinary Restart in Shut Down follows the BIOS boot
+order, so with the floppy in it starts the floppy again.
 
 * **Everything on the hard disk is erased.** Setup writes from the first
   sector on and makes no partition table, so the whole disk becomes the

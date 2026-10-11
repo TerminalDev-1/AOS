@@ -299,24 +299,27 @@ def main():
         time.sleep(1.5)
         check("Setup has a desktop shortcut that opens it",
               gui() == (1, "WinKit Setup"))
+        def boot_drive():
+            """The BIOS drive WinKit started from (boot sector at 7C00)."""
+            m.qmp("pmemsave", val=0x7c24, size=1, filename=str(memory))
+            return memory.read_bytes()[0]
+
+        check("it was started from the floppy", boot_drive() == 0)
         m.key("ret")                         # Install
         m.key("ret")                         # ...and again to confirm
         time.sleep(1)
         shot("14-setup")
-        m.key("esc")                         # read once the copy is over
+        m.key("ret")                         # read after the copy: Restart
         deadline = time.time() + 180
-        while gui()[0]:
-            assert time.time() < deadline, "Setup did not finish"
+        while boot_drive() != 0x80:
+            assert time.time() < deadline, "no restart from the hard disk"
             time.sleep(1)
-        floppy = [d["device"] for d in m.qmp("query-block")
-                  if "floppy" in d["device"]][0]
-        m.qmp("eject", device=floppy, force=True)
-        m.qmp("system_reset")
-        time.sleep(3)
+        time.sleep(2)
         wait_gui()
         state_addr, term_addr = locate()
-        check("with the floppy out, the machine starts WinKit from the "
-              "hard disk", state()[0] == 0)
+        check("Restart in Setup starts WinKit from the hard disk, with the "
+              "floppy still in the drive",
+              state()[0] == 0 and boot_drive() == 0x80)
         m.key("ret")
         m.key("f6")
         out = run("dir")

@@ -2,6 +2,8 @@
 ; was started from, sector by sector, to the first hard disk (BIOS drive
 ; 80h) and adjusts the boot sector to that disk, so the machine then starts
 ; WinKit without the floppy. Everything on the hard disk is overwritten.
+; When the copy is done the Install button becomes Restart, which starts
+; the machine from the hard disk straight away.
 ;
 ; The hard disk gets the same layout as the floppy: boot sector, kernel,
 ; and the 1.44 MB FAT12 volume, starting at its first sector (there is no
@@ -98,8 +100,11 @@ quit:
     xor ah,ah                          ; exit
     int 80h
 
-; Install was pressed: ask once more, then copy.
+; Install was pressed: ask once more, then copy. After a good copy the
+; same button restarts from the hard disk.
 install:
+    cmp done,0
+    jne boot_hd
     cmp can,0
     je events
     cmp armed,0
@@ -112,7 +117,56 @@ in_go:
     mov can,0
     call copy
     call show_status
+    cmp status,OFFSET t_done
+    jne in_events
+    mov done,1
+    GBEV 115,210,84,24,BV_BUTTON       ; Install becomes Restart
+    GTXT 129,214,K_BLACK,t_restart
+in_events:
     jmp events
+
+; Start the machine from the hard disk, whatever the BIOS boot order is:
+; read its boot sector to 0000:7C00, as the BIOS would, and jump to it with
+; the drive number in DL. If that cannot be done, restart the usual way.
+boot_hd:
+    mov ax,0c200h                      ; PS/2 mouse off, and no callback
+    xor bh,bh
+    int 15h
+    mov ax,0c207h
+    xor bx,bx
+    mov es,bx
+    int 15h
+    mov ax,3                           ; text mode, as after a power-on
+    int 10h
+    xor ax,ax
+    mov es,ax
+    mov di,3
+bh_try:
+    mov ax,0201h                       ; read one sector
+    mov bx,7c00h
+    mov cx,1                           ; cylinder 0, sector 1
+    mov dx,HARDDISK                    ; head 0
+    int 13h
+    jnc bh_read
+    xor ax,ax
+    mov dl,HARDDISK
+    int 13h
+    dec di
+    jnz bh_try
+    int 19h
+bh_read:
+    cmp word ptr es:[7dfeh],0aa55h     ; a boot sector?
+    je bh_go
+    int 19h
+bh_go:
+    cli
+    xor ax,ax
+    mov ss,ax
+    mov sp,7c00h
+    sti
+    mov dl,HARDDISK
+    db 0eah                            ; jmp 0000:7C00
+    dw 7c00h,0
 
 ; Look at both disks. Sets can = 1 and the opening status text when the
 ; hard disk can take WinKit.
@@ -312,6 +366,7 @@ g_op    db 0
 srcdrv  db 0
 can     db 0                           ; installing is possible
 armed   db 0                           ; Install was pressed once
+done    db 0                           ; installed: the button restarts
 
 t_title   db 'WinKit Setup',0
 t_head    db 'Install WinKit on the hard disk',0
@@ -320,10 +375,11 @@ t_line2   db 'the first hard disk, so it starts without it.',0
 t_warn    db 'Everything on the hard disk will be erased.',0
 t_install db 'Install',0
 t_close   db 'Close',0
+t_restart db 'Restart',0
 t_ready   db 'Press Install to begin.',0
 t_sure    db 'Sure? Press Install again to erase and install.',0
 t_copying db 'Copying...',0
-t_done    db 'Done. Remove the floppy disk and restart.',0
+t_done    db 'Done. Press Restart to boot the hard disk.',0
 t_nodisk  db 'No hard disk was found.',0
 t_small   db 'The hard disk is too small (1.44 MB needed).',0
 t_fromhd  db 'WinKit is already running from the hard disk.',0

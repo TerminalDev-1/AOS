@@ -25,8 +25,9 @@ and the kernel's own FAT12 driver.
   program you install gets a shortcut on the desktop.
 - **WinKit terminal:** `help dir type echo copy ren del cls ver time mem
   reboot exit`, `echo TEXT > FILE`, and it runs native `.WKX` programs.
-- **Setup:** `SETUP.WKX` (Start > Programs > SETUP) installs WinKit on a
-  hard disk, which then boots without the floppy.
+- **Setup:** `SETUP.WKX` (desktop shortcut, or Start > Programs > SETUP)
+  installs WinKit on a hard disk and can restart straight into it; the
+  hard disk then boots without the floppy.
 - **FAT12 driver:** read, write, delete and rename on a 1.44 MB volume (the
   floppy image, or the hard disk after Setup), through BIOS INT 13h.
 - **Native programs:** flat binaries that talk to the system through
