@@ -1,6 +1,7 @@
 ; INPUT.INC - PS/2 mouse callback, keyboard, click and action dispatch.
 
 ; BIOS callback stack: status, X delta, Y delta, reserved, return CS:IP.
+; Under QEMU the packet only announces an absolute report (VMMOUSE.INC).
 ; Motion only flags the pointer (curdirty); the main loop swaps the arrow.
 mouse_callback PROC FAR
     push bp
@@ -10,6 +11,11 @@ mouse_callback PROC FAR
     push ds
     push cs
     pop ds
+    cmp vmmouse,0
+    je mc_packet
+    call vmm_read                      ; took an absolute position?
+    L_JNE mc_exit
+mc_packet:
     mov ax,[bp+12]
     mov buttons,al
     mov bx,[bp+10]
@@ -49,6 +55,7 @@ mc_yhigh:
     mov curdirty,1
 mc_ysame:
     mov my,bx
+mc_exit:
     pop ds
     pop bx
     pop ax

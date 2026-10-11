@@ -34,6 +34,23 @@ own doing, in [`src/VIDEO.INC`](src/VIDEO.INC), not an emulator option:
   clock follows the right edge; windows can be dragged across the full
   width. A program's client area is unchanged (410 x 264).
 
+## The mouse driver
+
+A PS/2 mouse only reports movement, so WinKit's pointer and the host's own
+pointer drift apart, and the host's leaves the emulator window before
+WinKit's reaches the edge: the taskbar and Start button become unreachable
+unless you grab the mouse. [`src/VMMOUSE.INC`](src/VMMOUSE.INC) fixes that
+under QEMU. It switches on QEMU's "VMware mouse" interface (a backdoor I/O
+port, 5658h), which reports where the host pointer is inside the window,
+and WinKit draws its pointer exactly there. Nothing has to be grabbed or
+released; just move the mouse into the window.
+
+* The PS/2 mouse stays enabled: its packets are what tell WinKit that a
+  new position is waiting.
+* Where the interface is missing (QEMU with `-machine vmport=off`, another
+  emulator, a real PC) WinKit uses the PS/2 movement as before.
+* The test scripts move the pointer the same way, with absolute positions.
+
 `run.py` also asks QEMU to scale the screen to its window
 (`-display gtk,zoom-to-fit=on`), so a maximized window shows a large
 desktop. `--fullscreen` is there if you want the whole monitor
@@ -100,13 +117,15 @@ loop and `INCLUDE`s the rest.
 | `TERM.INC` | the WinKit terminal, its commands, and the INT 80h program interface |
 | `PGUI.INC` | the INT 80h window calls: a program's window, drawing, key and mouse events |
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
+| `VMMOUSE.INC` | the QEMU mouse driver: absolute pointer positions |
 | `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE`, and the hard disk installer `SETUP` |
 
 The desktop uses VGA mode 12h (640x480, or 848x480 under QEMU) with its own
 16-colour palette and
 writes straight to planar video memory. PS/2 mouse input comes from the BIOS
 callback; the clock is the BIOS real-time clock. Only 8086 instructions are
-used.
+used, with one exception: the QEMU mouse driver needs a handful of 386
+instructions, written as bytes, and only runs them after QEMU has answered.
 
 Plain pointer motion only swaps the arrow using pixels saved underneath it;
 dragging a window copies it with the VGA latches and repaints just the strips

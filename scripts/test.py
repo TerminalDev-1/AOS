@@ -88,10 +88,13 @@ def main():
             m.qmp("cont")
 
         def mouse(x, y, down=None):
-            s = state()
+            # Absolute, as a host pointer over the emulator window is: each
+            # axis runs 0..0x7fff across the screen (src/VMMOUSE.INC).
             m.qmp("input-send-event", events=[
-                {"type": "rel", "data": {"axis": "x", "value": x - s[5]}},
-                {"type": "rel", "data": {"axis": "y", "value": y - s[6]}}])
+                {"type": "abs", "data": {
+                    "axis": "x", "value": -(-x * 0x8000 // WIDTH)}},
+                {"type": "abs", "data": {
+                    "axis": "y", "value": -(-y * 0x8000 // 480)}}])
             time.sleep(.2)
             if down is not None:
                 m.qmp("input-send-event", events=[
@@ -128,6 +131,22 @@ def main():
               size == (WIDTH, 480))
         check("boots straight into the VGA desktop", state()[0] == 0)
         check("PS/2 mouse enabled without any driver", state()[4] == 1)
+        # The QEMU mouse driver: an absolute position (0..0x7fff on each
+        # axis) puts WinKit's pointer right there, like a host pointer does.
+        m.qmp("input-send-event", events=[
+            {"type": "abs", "data": {"axis": "x",
+                                     "value": 600 * 0x8000 // WIDTH}},
+            {"type": "abs", "data": {"axis": "y",
+                                     "value": 400 * 0x8000 // 480}}])
+        time.sleep(.5)
+        check("the QEMU mouse driver follows absolute pointer positions",
+              abs(state()[5] - 600) <= 2 and abs(state()[6] - 400) <= 2)
+        m.qmp("input-send-event", events=[
+            {"type": "abs", "data": {"axis": "x", "value": 0x7fff}},
+            {"type": "abs", "data": {"axis": "y", "value": 0x7fff}}])
+        time.sleep(.5)
+        check("the pointer reaches the bottom right corner",
+              state()[5] >= WIDTH - 3 and state()[6] >= 477)
         shot("01-welcome")
         click(DLG + 330, 320)                  # OK on the welcome dialog
         check("mouse enters desktop", state()[0] == 1)

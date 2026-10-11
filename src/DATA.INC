@@ -28,6 +28,8 @@ clockx dw 548                          ; x of the tray clock
 ; ---- input ----
 buttons db 0
 lastbuttons db 0
+vmmouse db 0                          ; the QEMU mouse driver is in use
+vmgot db 0
 drag db 0
 dragdx dw 0
 dragdy dw 0

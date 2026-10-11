@@ -53,7 +53,9 @@ there is no third-party tool chain.
     python scripts/showcase.py       # screenshots of every feature
 
 Under QEMU, WinKit's display driver makes the desktop widescreen (848x480)
-so it fills the emulator window; on other video cards it is 640x480. The
+so it fills the emulator window (on other video cards it is 640x480), and
+its mouse driver keeps the pointer under your own, so there is no mouse
+grab and every corner of the screen is reachable. The
 system calls itself **WinKit-preview**.
 
 See [BUILDING.md](BUILDING.md) for the controls, the terminal and how the code

@@ -34,10 +34,13 @@ def main():
             return struct.unpack("<5B2H", memory.read_bytes())
 
         def mouse(x, y, down=None):
-            s = state()
+            # Absolute, as a host pointer over the emulator window is: each
+            # axis runs 0..0x7fff across the screen (src/VMMOUSE.INC).
             m.qmp("input-send-event", events=[
-                {"type": "rel", "data": {"axis": "x", "value": x - s[5]}},
-                {"type": "rel", "data": {"axis": "y", "value": y - s[6]}}])
+                {"type": "abs", "data": {
+                    "axis": "x", "value": -(-x * 0x8000 // 848)}},
+                {"type": "abs", "data": {
+                    "axis": "y", "value": -(-y * 0x8000 // 480)}}])
             time.sleep(.25)
             if down is not None:
                 m.qmp("input-send-event", events=[

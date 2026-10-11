@@ -16,6 +16,7 @@
 ;   SCENES.INC   desktop, taskbar, Start menu, welcome and Shut Down dialogs
 ;   WINDOWS.INC  Files/Notes/System bodies, minimize, dragging
 ;   INPUT.INC    mouse callback, keyboard, click and action dispatch
+;   VMMOUSE.INC  the QEMU mouse driver: absolute pointer positions
 ;   FS.INC       FAT12 driver over BIOS INT 13h
 ;   STORAGE.INC  Files list and NOTES.TXT
 ;   TERM.INC     the WinKit terminal and INT 80h program interface
@@ -75,6 +76,7 @@ start:
     int 15h
     L_JC no_mouse
     mov mouseok,1
+    call vmm_init                      ; absolute positions, under QEMU
 no_mouse:
     mov ax,0a000h
     mov es,ax
@@ -158,6 +160,7 @@ INCLUDE WIDGETS.INC
 INCLUDE SCENES.INC
 INCLUDE WINDOWS.INC
 INCLUDE INPUT.INC
+INCLUDE VMMOUSE.INC
 INCLUDE FS.INC
 INCLUDE STORAGE.INC
 INCLUDE TERM.INC

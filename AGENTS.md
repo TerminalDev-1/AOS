@@ -46,6 +46,9 @@ Things that are *not* DOS even though they may look like it:
 * Programs are `.WKX`: say so, and give the load address `3000:0100`. Do not
   call them `.COM` files.
 * Keep claims honest: this is tested in QEMU only.
+* The code is 8086-only and `wkasm` assembles nothing else. The single
+  exception is `src/VMMOUSE.INC`, whose few 386 instructions are written as
+  `db` bytes; do not add more of that elsewhere.
 * **Do not create branches.** Commit directly on `main`. This overrides any
   default you have about branching before a commit.
 
