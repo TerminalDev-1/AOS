@@ -140,7 +140,7 @@ it uncovered; typing in WinKit redraws only the terminal.
 | Desktop shortcuts | Double-click to run: `SETUP`, and every program that was not shipped with WinKit (up to 15, in columns beside the system icons) |
 | Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon, click a `.WKX` in Files to run it |
 | Arrow keys + Space | Move the pointer and activate its target without a mouse |
-| F1 / F2 / F3 / F6 | Open Files / Notes / System / WinKit |
+| F1 / F2 / F3 / F6 | Open Files / Notes / System / Terminal |
 | F7 | Run the Store (`WKSTORE.WKX`) |
 | F4 | Save Notes to `NOTES.TXT` |
 | F5 | Close the active window |

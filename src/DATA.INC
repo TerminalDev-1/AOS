@@ -372,12 +372,12 @@ lbl_next db 'Next >',0
 lbl_save db 'Save  F4',0
 lbl_r0 db 'Shut down',0
 lbl_r1 db 'Restart',0
-lbl_term db 'WinKit',0
+lbl_term db 'Terminal',0
 lbl_store db 'Store',0
 mn_files db 'Files',0
 mn_notes db 'Notes',0
 mn_system db 'System',0
-mn_term db 'WinKit',0
+mn_term db 'Terminal',0
 mn_store db 'Store',0
 mn_progs db 'Programs',0
 s_arrow db '>',0
@@ -393,11 +393,11 @@ ttl_notes db 'Notes - NOTES.TXT',0
 ttl_system db 'System Properties',0
 ttl_welcome db 'Welcome to WinKit-preview',0
 ttl_shut db 'Shut Down',0
-ttl_term db 'WinKit',0
+ttl_term db 'Terminal',0
 
 w_title db 'WinKit-preview',0
 w_sub db 'A standalone graphical operating system',0
-w_body db 'Files, notes and the WinKit terminal.',0
+w_body db 'Files, notes, a terminal and a store.',0
 w_hint db 'Press Enter to open the desktop.',0
 sd_text db 'What do you want the computer to do?',0
 sd_hint db 'R Restart   P Power off   Esc Cancel',0
@@ -426,7 +426,7 @@ sy_b1 db 'VGA 640 x 480, 16 colours',0
 sy_b2 db 'PS/2 mouse (BIOS) and keyboard',0
 sy_b3 db 'FAT12 floppy, BIOS disk services',0
 sy_f1 db 'Written in 16-bit assembly.',0
-sy_f2 db 'WinKit terminal: Start menu or F6.',0
+sy_f2 db 'Terminal: Start menu or F6.',0
 
 ; ---- pointer bitmaps: 16 rows x 16 bits ----
 cursorblack db 80h,0,0c0h,0,0e0h,0,0f0h,0,0f8h,0,0fch,0,0feh,0,0ffh,0

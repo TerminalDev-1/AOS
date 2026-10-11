@@ -38,7 +38,7 @@ Then:
 
 ```
 python scripts/mkimage.py          # assembles it and puts HI.WKX on the disk
-python scripts/run.py --snapshot   # boot WinKit, press Enter, open WinKit (F6)
+python scripts/run.py --snapshot   # boot WinKit, press Enter, open Terminal (F6)
 winkit> hi
 Hi from WinKit!
 ```
@@ -113,14 +113,14 @@ Any other `AH` is ignored and returns immediately.
 ### Output model
 
 Output goes to the terminal screen, a **50 column x 16 row** text grid in the
-WinKit window.
+Terminal window.
 
 * `AH=1` / `AH=2` understand `13` (carriage return), `10` (line feed, also
   scrolls) and `8` (backspace). Use `13,10` for a new line.
 * Other bytes below 32 are ignored (there is no tab). Bytes 32-255 are drawn
   with the BIOS 8x16 font.
 * Text wraps at column 50 and the screen scrolls when it runs past row 16.
-* The grid is redrawn after every call, but only while the WinKit window is
+* The grid is redrawn after every call, but only while the Terminal window is
   the active, visible window.
 
 ### Input model
@@ -335,7 +335,7 @@ byte(s)`.
 | Run the assembler self-test | `python scripts/test_wkasm.py` |
 
 Inside WinKit: press Enter on the welcome dialog, open the terminal with F6
-or Start > WinKit, then type the program's name (the `.WKX` is optional).
+or Start > Terminal, then type the program's name (the `.WKX` is optional).
 Names are 8.3 and case-insensitive. `dir` lists what is on the disk.
 
 ## Testing without a screen
@@ -353,7 +353,7 @@ with Machine("out/winkit.img") as m:
         time.sleep(.2)
     time.sleep(1)
     m.key("ret")                    # leave the welcome dialog
-    m.key("f6")                     # open WinKit
+    m.key("f6")                     # open Terminal
     m.type("hi"); m.key("ret"); time.sleep(.7)
     # the terminal text lives right after the signature "WKTERMBUF":
     # 16 rows of 52 bytes, each row NUL-terminated

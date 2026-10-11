@@ -3,6 +3,7 @@
 There is no DOS in the image, so everything below is the system's own code:
 the desktop, the FAT12 driver and the WinKit terminal.
 """
+import argparse
 import struct
 import threading
 import time
@@ -23,11 +24,15 @@ SHOTS = ROOT / "out" / "screens" / "gui"
 
 
 def main():
+    ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    ap.add_argument("--image", default=str(ROOT / "out" / "winkit.img"),
+                    help="image to test (build one with mkimage.py --out)")
+    image = ap.parse_args().image
     SHOTS.mkdir(parents=True, exist_ok=True)
     checks = 0
     store_port = free_port()             # the store server, on the serial port
     serial = ("-serial", f"tcp:127.0.0.1:{store_port},server=on,wait=off")
-    with Machine(str(ROOT / "out" / "winkit.img"), extra=serial) as m:
+    with Machine(image, extra=serial) as m:
         threading.Thread(target=wkstore.serve, args=(store_port,),
                          kwargs={"log": lambda text: None},
                          daemon=True).start()
@@ -179,7 +184,7 @@ def main():
 
         # ---- the WinKit terminal ----
         m.key("f6")
-        check("F6 opens WinKit", state()[1] == 13 and state()[2] == 4)
+        check("F6 opens Terminal", state()[1] == 13 and state()[2] == 4)
         out = run("dir")
         check("dir lists the volume",
               "README.TXT" in out and "HELLO.WKX" in out and "NOTES.TXT" in out)
@@ -308,7 +313,7 @@ def main():
     hda = ROOT / "out" / "test-hda.img"
     with open(hda, "wb") as fh:
         fh.truncate(16 * 1024 * 1024)
-    with Machine(str(ROOT / "out" / "winkit.img"), hda=str(hda),
+    with Machine(image, hda=str(hda),
                  boot="order=ac") as m:
         memory = Path(m.tmp) / "ram.bin"
         wait_gui()
