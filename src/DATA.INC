@@ -210,6 +210,9 @@ termdirty db 0
 guiopen db 0                           ; a program has its window up
 guititle db 42 dup (0)
 storefile db 'WKSTORE.WKX',0
+chainfile db 16 dup (0)                ; program to run when this one exits
+gewait db 0                            ; 0 wait for an event, 1/2 one tick only
+keydirty db 0                          ; dirty as it was before the key
 
 cmdtab dw OFFSET c_help,OFFSET cmd_help
        dw OFFSET c_dir,OFFSET cmd_dir

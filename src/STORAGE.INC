@@ -45,6 +45,56 @@ rf_done:
     ret
 refresh_files ENDP
 
+; A click in the Files list: a .WKX program under the pointer is run.
+files_click PROC NEAR
+    mov ax,mx
+    sub ax,wx
+    sub ax,12
+    jb fcl_done
+    xor dx,dx
+    mov bx,200
+    div bx                             ; AX = column, DX = x inside it
+    cmp ax,2
+    jae fcl_done
+    cmp dx,150
+    jae fcl_done
+    mov cx,ax
+    mov ax,my
+    sub ax,wy
+    sub ax,64
+    jb fcl_done
+    mov bl,18
+    div bl                             ; AL = row
+    cmp al,10
+    jae fcl_done
+    xor ah,ah
+    jcxz fcl_index
+    add ax,10                          ; second column
+fcl_index:
+    add ax,filepage
+    cmp ax,filecount
+    jae fcl_done
+    mov bx,14
+    mul bx
+    add ax,OFFSET files+1
+    mov si,ax                          ; SI -> "NAME.EXT"
+    mov bx,si
+fcl_dot:
+    mov al,[bx]
+    or al,al
+    jz fcl_done
+    inc bx
+    cmp al,'.'
+    jne fcl_dot
+    cmp word ptr [bx],4b57h            ; "WK"
+    jne fcl_done
+    cmp word ptr [bx+2],0058h          ; "X", end of name
+    jne fcl_done
+    jmp run_named
+fcl_done:
+    ret
+files_click ENDP
+
 next_files PROC NEAR
     mov ax,filepage
     add ax,20

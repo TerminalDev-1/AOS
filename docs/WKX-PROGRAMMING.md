@@ -100,11 +100,13 @@ registers are preserved** (flags too), except where noted.
 | `02h` | print string | `DS:DX` -> NUL-terminated string | |
 | `03h` | read key | | `AL` = ASCII, `AH` = BIOS scan code (clobbered) |
 | `04h` | save file | `DS:DX` -> NUL-terminated name, `DS:SI` -> data, `CX` = bytes | `AX` = 0 saved, 1 failed (clobbered) |
+| `05h` | run another program | `DS:DX` -> NUL-terminated file name | returns only on failure, with `AX` = 1 |
 | `10h` | open window | `DS:DX` -> NUL-terminated title | |
 | `11h` | fill rectangle | `BX`,`CX` = x,y; `SI`,`DI` = width,height; `AL` = colour | |
 | `12h` | draw text | `BX`,`CX` = x,y; `AL` = colour; `DS:DX` -> NUL-terminated string | |
 | `13h` | draw 3D box | `BX`,`CX` = x,y; `SI`,`DI` = width,height; `AL` = bevel style | |
 | `14h` | wait for event | | `AX` = event, `BX`, `CX` = its details (all three clobbered) |
+| `15h` | poll for event | | as `14h`, but `AX` = 0 if nothing happened within one timer tick |
 
 Any other `AH` is ignored and returns immediately.
 
@@ -137,6 +139,14 @@ replacing any file of that name. The name is an 8.3 name such as
 fails (`AX` = 1) when the name is empty, the size is too large, the disk or
 the root directory is full, or the disk cannot be written. This is the only
 file service: a program cannot read, list, append to or delete files.
+
+### Running another program
+
+`AH=5` ends the calling program and starts the one named at `DS:DX` in its
+place (a full file name such as `'CLOCK.WKX',0`). Nothing is passed to it and
+control never comes back to the caller. If there is no such file the call
+returns with `AX` = 1 and the caller carries on. The Store uses this for
+its Run button.
 
 ### A window of your own
 
@@ -171,8 +181,11 @@ desktop, and the program draws in it and waits for events.
   **2** a left-button press inside the client area, with `BX`,`CX` = x,y;
   **3** a click on the close button. The system does not close the window
   for you: exit when you get event 3. Without a window `AX` is 0.
+* **Polling** (`AH=15h`) is `AH=14h` that gives up after one timer tick
+  (about 55 ms) and returns `AX` = 0. Call it in a loop to animate or to
+  keep a display current; `store/CLOCK.ASM` redraws the time this way.
 * **The pointer** is visible and moves only while the program is waiting
-  in `AH=14h`. Draw first, then wait.
+  in `AH=14h` or `AH=15h`. Draw first, then wait.
 * **Exit closes the window.** When the program exits, the window goes away
   and the desktop is repainted. There is no call to close it earlier.
 * While the window is open the terminal is not redrawn, so `AH=1`/`AH=2`
@@ -232,9 +245,11 @@ CODE ENDS
 END start
 ```
 
-The only way to start a program is by name in the terminal; the Store
-(`WKSTORE.WKX`) is the one program that also has a Start menu entry, a
-desktop icon and a key (F7).
+A program is started by clicking it in the Files window, by name in the
+terminal, or by another program with `AH=5`. The Store (`WKSTORE.WKX`) is
+the one program that also has a Start menu entry, a desktop icon and a key
+(F7). A program started from the desktop that prints with `AH=1`/`AH=2` or
+reads a key with `AH=3` gets the terminal window opened for it.
 
 ### Things the system does not provide
 
@@ -253,7 +268,7 @@ can use the BIOS directly, since it has the whole machine:
   string through whatever `DS` is at the call.)
 * While a program runs, the desktop is frozen: the other windows do not
   respond, the clock does not update, and the pointer only moves while the
-  program waits in `AH=14h`.
+  program waits in `AH=14h` or `AH=15h`.
 
 ## The assembler (`wkasm`)
 
@@ -364,9 +379,11 @@ All of these are in `src/progs/` and are built into the image.
 | `WINDOW.ASM` | the minimum windowed program: a window, a button, click and close events |
 | `WKSTORE.ASM` | the WinKit Store: a windowed program (buttons, a list, clicks and keys), polling the serial port, `INT 1Ah` timeouts, `AH=4` to save a file |
 
-The programs offered by the WinKit Store are in `store/` (`CLOCK.ASM`,
-`DICE.ASM`, `GUESS.ASM`). They are ordinary `.WKX` sources that are not put
-on the disk by `mkimage.py`; see "The WinKit Store" in
+The programs offered by the WinKit Store are in `store/`: `CLOCK.ASM`
+(polling with `AH=15h`), `DICE.ASM` (drawing with rectangles) and
+`GUESS.ASM` (a text field and buttons). They are windowed `.WKX` sources
+that are not put on the disk by `mkimage.py`, and the Store only accepts
+windowed programs; see "The WinKit Store" in
 [BUILDING.md](../BUILDING.md) for how to publish one.
 
 ### A complete example with input

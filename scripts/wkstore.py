@@ -4,7 +4,8 @@
 WinKit has no network, so its store program talks to the machine's serial
 port (COM1). This script sits on the other end of that port and serves the
 programs in store/: every store/NAME.ASM is assembled with wkasm and offered
-as NAME.WKX. A source describes itself with a comment line such as
+as NAME.WKX. The Store only carries windowed programs: a source that never
+opens a window (mov ah,10h / int 80h) is left out. A source describes itself with a comment line such as
 
     ; Store: Guess the number
 
@@ -43,6 +44,7 @@ MAX_APPS = 64                         # these match WKSTORE.ASM
 NAME_LEN = 8
 DESC_LEN = 30
 MAX_FILE = 0xD000
+OPEN_WINDOW = b"\xB4\x10\xCD\x80"     # mov ah,10h / int 80h
 
 
 def describe(path):
@@ -76,6 +78,10 @@ def load_catalog(directory=STORE, log=print):
             continue
         if not 0 < len(data) <= MAX_FILE:
             log(f"[store] skipping {filename}: {len(data)} bytes")
+            continue
+        if OPEN_WINDOW not in data:
+            log(f"[store] skipping {filename}: not a windowed program "
+                "(it never opens a window with INT 80h AH=10h)")
             continue
         if len(apps) == MAX_APPS:
             log(f"[store] more than {MAX_APPS} programs; the rest are left out")

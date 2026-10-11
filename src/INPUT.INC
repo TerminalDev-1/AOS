@@ -391,6 +391,8 @@ ki_notup:
     mov curdirty,1
     ret
 ki_notdown:
+    mov bl,dirty                       ; most keys change the scene...
+    mov keydirty,bl
     mov dirty,1
     cmp viewstate,V_OFF
     L_JNE ki_notoff
@@ -478,6 +480,8 @@ ki_notf7:
     L_JZ ki_notterm
     test hidden,8
     L_JNZ ki_notterm
+    mov bl,keydirty                    ; ...but typing only changes the
+    mov dirty,bl                       ; terminal, which redraws itself
     jmp term_key
 ki_notterm:
     cmp active,2

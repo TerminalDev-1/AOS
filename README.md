@@ -27,10 +27,11 @@ and the kernel's own FAT12 driver.
   through BIOS INT 13h.
 - **Native programs:** flat binaries that talk to the system through
   `INT 80h`: terminal text and keys, saving a file, and a window of their
-  own with drawing and mouse clicks. Examples are in [`src/progs`](src/progs).
+  own with drawing and mouse clicks. Click a `.WKX` in Files to run it, or
+  type its name in the terminal. Examples are in [`src/progs`](src/progs).
 - **WinKit Store:** a windowed program (`WKSTORE.WKX`; Start > Store, the
-  desktop icon or F7) that downloads programs from a store server on the
-  host and installs them on the disk. There is no network: the link is the
+  desktop icon or F7) that downloads windowed programs from a store server
+  on the host, installs them on the disk and runs them. There is no network: the link is the
   serial port (`python scripts/run.py --store`). The programs on offer are
   in [`store`](store).
 

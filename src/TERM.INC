@@ -794,6 +794,8 @@ cmd_run ENDP
 ; SI = file name: load it to 3000:0100 and run it. CF set when there is no
 ; such program.
 run_file PROC NEAR
+    mov chainfile,0
+rnf_load:
     call file_read
     jc rnf_bad
     mov cx,ax
@@ -820,6 +822,17 @@ run_file PROC NEAR
     pop es
     pop ds
     call prog_run
+    cmp chainfile,0                    ; it asked for another program
+    je rnf_ok
+    mov si,OFFSET chainfile
+    mov di,OFFSET arg2
+    mov cx,16
+    rep movsb
+    mov chainfile,0
+    call paint                         ; a tidy desktop in between
+    mov si,OFFSET arg2
+    jmp rnf_load
+rnf_ok:
     clc
     ret
 rnf_bad:
@@ -856,8 +869,8 @@ prog_return:
 prog_run ENDP
 
 ; INT 80h: AH = 0 exit, 1 print AL, 2 print DS:DX, 3 wait for a key,
-; 4 save CX bytes at DS:SI as the file named at DS:DX. 10h..14h give the
-; program a window: see PGUI.INC.
+; 4 save CX bytes at DS:SI as the file named at DS:DX, 5 exit and run the
+; program named at DS:DX. 10h..15h give the program a window: see PGUI.INC.
 sys_call PROC FAR
     sti
     cmp ah,0
@@ -885,6 +898,8 @@ sys_call PROC FAR
     je sys_key
     cmp ah,4
     L_JE sys_save
+    cmp ah,5
+    L_JE sys_chain
     cmp ah,10h
     L_JE sys_gopen
     cmp ah,11h
@@ -895,6 +910,8 @@ sys_call PROC FAR
     L_JE sys_gbevel
     cmp ah,14h
     L_JE sys_gevent
+    cmp ah,15h
+    L_JE sys_gpoll
     jmp sys_back
 sys_putc:
     call term_putc
@@ -993,17 +1010,44 @@ ss_done:
     push cs
     pop es
     jmp sys_back
+sys_chain:
+    mov word ptr [bp+16],1             ; AX = 1: there is no such program
+    mov es,[bp+2]
+    mov si,[bp+10]                     ; DX = name
+    mov di,OFFSET arg1
+    mov cx,13
+    call gui_copy
+    mov si,OFFSET arg1
+    call fs_cvt
+    mov ax,FSSEG
+    mov es,ax
+    call fs_find
+    push cs
+    pop es
+    L_JC sys_back
+    mov si,OFFSET arg1                 ; run_file picks it up after the exit
+    mov di,OFFSET chainfile
+    mov cx,14
+    rep movsb
+    jmp sys_exit
 sys_call ENDP
 
 term_refresh_if_top PROC NEAR
     cmp guiopen,0                      ; a program's window covers it
     jne trt_no
     cmp active,4
-    jne trt_no
+    jne trt_raise
+    test opened,8
+    jz trt_raise
     test hidden,8
-    jnz trt_no
+    jnz trt_raise
     call term_refresh
 trt_no:
+    ret
+trt_raise:                             ; started from the desktop: a program
+    mov al,4                           ; that prints gets the terminal
+    call open_window
+    call paint
     ret
 term_refresh_if_top ENDP
 

@@ -1,4 +1,4 @@
-; PGUI.INC - a window for native programs: INT 80h functions 10h..14h.
+; PGUI.INC - a window for native programs: INT 80h functions 10h..15h.
 ;
 ; A program gets one window, WIN_W x WIN_H at GUI_X/GUI_Y, on top of the
 ; desktop. It draws with client coordinates (0,0 is the pixel under the
@@ -130,6 +130,8 @@ gb_style:
 ; AH=14h: wait for an event. AX = 1 key (BL ASCII, BH scan code),
 ; 2 click (BX,CX = client x,y), 3 the close button; 0 without a window.
 sys_gevent:
+    mov gewait,0
+ge_start:
     mov word ptr [bp+16],0
     cmp guiopen,0
     L_JE sys_back
@@ -185,6 +187,12 @@ ge_key:
     mov word ptr [bp+16],1
     jmp ge_out
 ge_idle:
+    cmp gewait,0
+    je ge_sleep
+    cmp gewait,2                       ; polling: one sleep, then give up
+    je ge_out
+    mov gewait,2
+ge_sleep:
     sti                                ; let the mouse callback run
     hlt
     jmp ge_loop
@@ -192,13 +200,34 @@ ge_out:
     call restore_under
     jmp sys_back
 
-; Load and run the Store program (Start menu, desktop icon, F7).
-run_store PROC NEAR
+; AH=15h: the same, but gives up after one timer tick (about 55 ms) with
+; AX = 0, so a program can keep something on screen up to date.
+sys_gpoll:
+    mov gewait,1
+    jmp ge_start
+
+; SI = file name: run a program from the desktop. The terminal records it
+; as if it had been typed there.
+run_named PROC NEAR
+    push si
+    call term_puts
+    call term_crlf
     mov menuopen,0
     mov iconsel,0
     call paint                         ; the program draws on a tidy desktop
-    mov si,OFFSET storefile
+    pop si
     call run_file
-    mov dirty,1
-    ret
+    jnc rn_ran
+    mov si,OFFSET t_badcmd
+    call term_puts
+    call term_crlf
+rn_ran:
+    call term_prompt
+    jmp refresh_files                  ; it may have saved something
+run_named ENDP
+
+; The Store program (Start menu, desktop icon, F7).
+run_store PROC NEAR
+    mov si,OFFSET storefile
+    jmp run_named
 run_store ENDP

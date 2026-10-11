@@ -1,5 +1,6 @@
 ; WKSTORE.WKX - the WinKit Store. A window that lists the programs a store
-; server offers and installs the one you pick onto the disk as NAME.WKX.
+; server offers, installs the one you pick onto the disk as NAME.WKX, and
+; runs it.
 ;
 ; WinKit has no network, so the store is reached over the serial port
 ; (COM1, 115200 8N1, polled). The server is scripts/wkstore.py on the host.
@@ -132,6 +133,8 @@ ok_up:
     je go_install
     cmp al,'I'
     je go_install
+    cmp al,' '
+    je go_run
     cmp bh,48h                         ; up
     jne ok_down
     cmp sel,0
@@ -155,6 +158,9 @@ ok_pgup:
     jmp events
 go_install:
     call install
+    jmp events
+go_run:
+    call run_it
     jmp events
 go_prev:
     cmp pagetop,PAGE
@@ -188,21 +194,25 @@ on_click:
     jae oc_list
     cmp bx,7
     jb to_events
-    cmp bx,91
+    cmp bx,79
     jb go_install
-    cmp bx,97
+    cmp bx,85
     jb to_events
-    cmp bx,181
+    cmp bx,133
+    jb go_run
+    cmp bx,139
+    jb to_events
+    cmp bx,203
     jae oc_paging
     jmp reload
 oc_paging:
-    cmp bx,187
+    cmp bx,209
     jb to_events
-    cmp bx,251
+    cmp bx,237
     jb go_prev
-    cmp bx,257
+    cmp bx,243
     jb to_events
-    cmp bx,321
+    cmp bx,271
     jb go_next
     jmp events
 oc_list:
@@ -231,14 +241,16 @@ draw_all:
     mov dx,OFFSET t_title              ; a fresh, empty window
     mov ah,10h
     int 80h
-    GBEV 7,4,84,24,BV_BUTTON
-    GTXT 21,8,K_BLACK,t_install
-    GBEV 97,4,84,24,BV_BUTTON
-    GTXT 115,8,K_BLACK,t_reload
-    GBEV 187,4,64,24,BV_BUTTON
-    GTXT 195,8,K_BLACK,t_prev
-    GBEV 257,4,64,24,BV_BUTTON
-    GTXT 265,8,K_BLACK,t_next
+    GBEV 7,4,72,24,BV_BUTTON
+    GTXT 15,8,K_BLACK,t_install
+    GBEV 85,4,48,24,BV_BUTTON
+    GTXT 97,8,K_BLACK,t_run
+    GBEV 139,4,64,24,BV_BUTTON
+    GTXT 147,8,K_BLACK,t_reload
+    GBEV 209,4,28,24,BV_BUTTON
+    GTXT 219,8,K_BLACK,t_prev
+    GBEV 243,4,28,24,BV_BUTTON
+    GTXT 253,8,K_BLACK,t_next
     GBOX 0,31,410,1,K_SHADOW
     GBOX 0,32,410,1,K_WHITE
     call draw_list
@@ -247,7 +259,7 @@ draw_all:
 ; The white list with one row per program: NAME  SIZE  description.
 draw_list:
     GBEV 3,37,404,190,BV_FIELD
-    GBOX 328,4,80,24,K_FACE            ; "Page n/m"
+    GBOX 280,4,128,24,K_FACE           ; "Page n/m"
     mov di,OFFSET line
     mov si,OFFSET t_page
     call put_str
@@ -270,7 +282,7 @@ dl_pages:
     call put_dec
     xor al,al
     stosb
-    GTXT 336,8,K_BLACK,line
+    GTXT 288,8,K_BLACK,line
     mov row,0
 dl_row:
     mov ax,pagetop
@@ -767,16 +779,12 @@ in_sent:
     int 80h
     or ax,ax
     jnz in_disk
-    mov di,OFFSET msg                  ; "Installed NAME.WKX. Type NAME ..."
+    mov di,OFFSET msg                  ; "Installed NAME.WKX. Press Run ..."
     mov si,OFFSET t_done1
     call put_str
     mov si,OFFSET fname
     call put_str
     mov si,OFFSET t_done2
-    call put_str
-    mov si,recp
-    call put_str
-    mov si,OFFSET t_done3
     call put_str
     xor al,al
     stosb
@@ -786,6 +794,38 @@ in_disk:
     jmp draw_status
 in_error:
     call set_error
+    jmp draw_status
+
+; Leave the Store and start the selected program. That only works when it
+; is on the disk, so this comes back when it has not been installed.
+run_it:
+    mov ax,sel
+    cmp ax,count
+    jb ru_go
+    ret
+ru_go:
+    mov bx,REC_SIZE
+    mul bx
+    add ax,OFFSET heap
+    mov recp,ax
+    mov si,ax
+    mov di,OFFSET fname
+    call put_str
+    mov si,OFFSET t_ext
+    call put_str
+    xor al,al
+    stosb
+    mov dx,OFFSET fname
+    mov ah,5                           ; exit and run the program at DS:DX
+    int 80h
+    mov di,OFFSET msg                  ; still here: there is no such file
+    mov si,recp
+    call put_str
+    mov si,OFFSET t_notyet
+    call put_str
+    xor al,al
+    stosb
+    mov status,OFFSET msg
     jmp draw_status
 
 ; ---- data ----
@@ -809,19 +849,20 @@ errtab dw OFFSET t_silent,OFFSET t_refused,OFFSET t_large,OFFSET t_damaged
 
 t_title   db 'WinKit Store',0
 t_install db 'Install',0
+t_run     db 'Run',0
 t_reload  db 'Reload',0
-t_prev    db '< Prev',0
-t_next    db 'Next >',0
+t_prev    db '<',0
+t_next    db '>',0
 t_page    db 'Page ',0
 t_ext     db '.WKX',0
 t_dots    db '...',0
 t_asking  db 'Contacting the store...',0
-t_hint    db 'Select a program, then press Install.',0
+t_hint    db 'Select a program, then Install and Run.',0
 t_empty   db 'The store is empty.',0
 t_getting db 'Downloading ',0
 t_done1   db 'Installed ',0
-t_done2   db '. Type ',0
-t_done3   db ' in WinKit.',0
+t_done2   db '. Press Run to start it.',0
+t_notyet  db ' is not installed yet: press Install.',0
 t_noport  db 'This machine has no serial port (COM1).',0
 t_disk    db 'Could not save: disk error or disk full.',0
 t_silent  db 'No answer. Start: python scripts/run.py --store',0

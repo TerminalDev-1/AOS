@@ -56,7 +56,7 @@ it uncovered; typing in WinKit redraws only the terminal.
 | Control | Action |
 |---|---|
 | Enter on the welcome dialog | Enter the desktop |
-| Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon |
+| Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon, click a `.WKX` in Files to run it |
 | Arrow keys + Space | Move the pointer and activate its target without a mouse |
 | F1 / F2 / F3 / F6 | Open Files / Notes / System / WinKit |
 | F7 | Run the Store (`WKSTORE.WKX`) |
@@ -85,8 +85,8 @@ Open it from the Start menu or with F6.
 
 A program is a flat binary assembled with `ORG 100h`, loaded to
 `3000:0100`, using the `INT 80h` services: exit, print character, print
-string, read key, save file, and five calls that give the program a window
-to draw in with key and mouse events. Drop a new `.ASM` into `src/progs/` and rebuild;
+string, read key, save file, run another program, and six calls that give
+the program a window to draw in with key and mouse events. Drop a new `.ASM` into `src/progs/` and rebuild;
 `mkimage.py` assembles every program there and puts it on the disk.
 
 The full reference, with the memory map, the assembler dialect, testing
@@ -94,8 +94,8 @@ recipes and examples, is [docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md).
 
 ## The WinKit Store
 
-The Store is a window that lists programs and installs the one you pick as
-`NAME.WKX` on the disk. It is an ordinary native program, `WKSTORE.WKX`,
+The Store is a window that lists programs, installs the one you pick as
+`NAME.WKX` on the disk, and runs it. It is an ordinary native program, `WKSTORE.WKX`,
 that draws its window through `INT 80h`. WinKit has no network: the
 program talks to the serial port (COM1, polled), and the other end of that
 port is the store server, [`scripts/wkstore.py`](scripts/wkstore.py),
@@ -110,13 +110,21 @@ by typing `wkstore` in the terminal.
 |---|---|
 | Click a row, Up / Down | Select a program |
 | Install button, Enter or I | Download the selected program and save it |
+| Run button, Space | Leave the Store and start the selected program (it must be installed) |
 | Reload button, R | Ask the server for the catalogue again |
-| Prev / Next buttons, PgUp / PgDn | Page through the list (10 per page) |
+| `<` / `>` buttons, PgUp / PgDn | Page through the list (10 per page) |
 | Close button, Esc or Q | Leave the Store |
 
 While the Store is open it is the only thing running: like every WinKit
 program it has the machine to itself, so the other windows do not respond
-until it is closed. Installed programs are run from the terminal by name.
+until it is closed. An installed program is started with Run in the Store,
+by clicking it in Files (press Refresh if it is not listed yet), or by name
+in the terminal.
+
+**The Store only carries windowed programs.** The server leaves out any
+source that never opens a window (it looks for `mov ah,10h` / `int 80h` in
+the assembled program) and says so in its log. The three programs in
+`store/` (`CLOCK`, `DICE`, `GUESS`) are windowed.
 
 The server offers every `.ASM` in [`store/`](store/): it assembles each one
 with wkasm and takes the description from a `; Store: text` comment line (up

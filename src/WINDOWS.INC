@@ -455,6 +455,13 @@ hw_notes:
     mov si,OFFSET notes_tab
 hw_tab:
     call hit_buttons
+    or al,al
+    jnz hw_act
+    cmp bx,0                           ; no button: a file in the list?
+    jne hw_yes
+    call files_click
+    jmp hw_yes
+hw_act:
     call do_action
 hw_yes:
     pop si

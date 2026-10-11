@@ -42,6 +42,18 @@ def main():
             assert state > 10 and term > 9, "telemetry not found"
             return state, term
 
+        def gui():
+            """(1, title) while a program has its window up, else (0, ...).
+
+            The kernel keeps that flag and the title just before the name
+            of the Store program (DATA.INC)."""
+            m.qmp("pmemsave", val=0x10000, size=0x10000, filename=str(memory))
+            ram = memory.read_bytes()
+            at = ram.rfind(b"WKSTORE.WKX\0")
+            assert at > 43, "window telemetry not found"
+            title = ram[at - 42:at].split(b"\0")[0].decode("latin-1")
+            return ram[at - 43], title
+
         wait_gui()
         state_addr, term_addr = locate()
 
@@ -179,26 +191,43 @@ def main():
         click(115 + 40, 93 + 14)             # the Install button
         time.sleep(2)
         shot("08-store")
+        check("the Store is a program with its own window",
+              gui() == (1, "WinKit Store"))
         m.key("up")                          # first row: CLOCK
         m.key("ret")                         # Enter installs too
         time.sleep(2)
+        click(115 + 108, 93 + 14)            # the Run button
+        time.sleep(1.5)
+        check("Run in the Store starts the installed program in a window",
+              gui() == (1, "Clock"))
+        shot("09-store-app")
         click(112 + 416 - 13, 72 + 11)       # the window's close button
         time.sleep(1)
-        check("the Store closes and the desktop is back",
-              state()[1] == 13 and state()[2] == 4)
+        check("closing it brings the desktop back",
+              gui()[0] == 0 and state()[1] == 13 and state()[2] == 4)
         out = run("dir")
         check("the Store installs the program clicked with the mouse",
               "DICE.WKX" in out)
         check("the Store installs the program picked with the keyboard",
               "CLOCK.WKX" in out)
-        out = run("clock")
-        check("the installed program runs", "Date: 1988-11-30" in out)
+        m.key("f1")                          # Files lists them: 10 per column
+        time.sleep(1)
+        click(96 + 12 + 200 + 40, 20 + 64 + 8)   # DICE.WKX, the 11th file
+        time.sleep(1.5)
+        check("clicking a program in Files runs it", gui() == (1, "Dice"))
+        m.key("esc")
+        time.sleep(1)
+        click(96 + 12 + 40, 20 + 64 + 3 * 18 + 8)    # HELLO.WKX, the 4th
+        time.sleep(1.5)
+        check("a text program started from Files gets the terminal",
+              state()[2] == 4 and
+              "Hello from a native WinKit program!" in term_text())
         run("window")                        # a program with its own window
         click(115 + 60, 93 + 30)             # its Quit button
         time.sleep(1)
         check("a windowed program gets its click and returns",
               "The window is closed." in term_text())
-        shot("09-terminal-final")
+        shot("10-terminal-final")
         out = run("dir")
         m.type("cls")
         m.key("ret")
@@ -219,7 +248,7 @@ def main():
         m.key("f6")
         out = run("type notes.txt")
         check("files survive the reboot", "Assembly GUI notes" in out)
-        shot("10-after-reboot")
+        shot("11-after-reboot")
 
     print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
 
