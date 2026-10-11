@@ -45,6 +45,8 @@ Things that are *not* DOS even though they may look like it:
 * Programs are `.WKX`: say so, and give the load address `3000:0100`. Do not
   call them `.COM` files.
 * Keep claims honest: this is tested in QEMU only.
+* **Do not create branches.** Commit directly on `main`. This overrides any
+  default you have about branching before a commit.
 
 ## Where the facts are
 
