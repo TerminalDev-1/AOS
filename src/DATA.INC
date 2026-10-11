@@ -12,6 +12,19 @@ mouseok db 0
 mx dw 320
 my dw 240
 
+; ---- screen: 640 x 480 unless VIDEO.INC found a wider mode ----
+wide db 0                              ; the QEMU wide mode is on
+scrw dw 640                            ; width in pixels
+maxx dw 639
+rowb dw 80                             ; bytes in a row of one plane
+lastcol dw 79
+rowskip dw 80-WIN_W/8                  ; from a window row to the next
+backofs dw (WIN_H-1)*80+(WIN_W/8-1)    ; last byte of a window, from its first
+wxmax dw 640-WIN_W                     ; rightmost window position
+dlgx dw 0                              ; shift that centres the dialogs
+guix dw (640-WIN_W)/2                  ; x of a program's window
+clockx dw 548                          ; x of the tray clock
+
 ; ---- input ----
 buttons db 0
 lastbuttons db 0

@@ -11,6 +11,7 @@
 ;   CONST.INC    palette indices, layout, action codes
 ;   DATA.INC     state, button tables, strings, palette, bitmaps
 ;   GFX.INC      rectangles, text, pointer, partial repaint, window blit
+;   VIDEO.INC    the QEMU display driver: a wider 16-colour screen
 ;   WIDGETS.INC  bevels, title gradient, window chrome, icons, buttons
 ;   SCENES.INC   desktop, taskbar, Start menu, welcome and Shut Down dialogs
 ;   WINDOWS.INC  Files/Notes/System bodies, minimize, dragging
@@ -43,6 +44,7 @@ start:
     mov fontseg,es
     mov ax,12h
     int 10h
+    call video_init                    ; wider, if the card can
     call set_palette
     mov ax,0a000h
     mov es,ax
@@ -138,9 +140,10 @@ idle:
     cmp dirty,0                        ; a full repaint will draw it anyway
     L_JNE idle_wait
     call restore_under
-    mov ax,544
+    mov ax,clockx                      ; the tray clock's corner
+    sub ax,4
     mov bx,TASK_Y
-    mov cx,SCR_W
+    mov cx,scrw
     mov dx,SCR_H
     call repaint_area
     call cursor_show
@@ -150,6 +153,7 @@ idle_wait:
     jmp mainloop
 
 INCLUDE GFX.INC
+INCLUDE VIDEO.INC
 INCLUDE WIDGETS.INC
 INCLUDE SCENES.INC
 INCLUDE WINDOWS.INC

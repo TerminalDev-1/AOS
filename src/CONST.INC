@@ -19,20 +19,18 @@ K_ORANGE  EQU 14
 K_CYAN    EQU 15
 
 ; ---- layout (pixels) ----
-SCR_W     EQU 640
+SCR_W     EQU 848    ; the widest screen: full-width fills use this and
+                     ; are clipped to the real width, scrw (VIDEO.INC)
 SCR_H     EQU 480
 TASK_Y    EQU 452
 TASK_H    EQU 28
 WIN_W     EQU 416    ; must stay a multiple of 8: windows move by byte
 WIN_H     EQU 288
 TBAR_H    EQU 18
-WIN_XMAX  EQU 224
 WIN_YMIN  EQU 0
 WIN_YMAX  EQU 164
-BACK_OFS  EQU (WIN_H-1)*80+(WIN_W/8-1)
 PROGSEG   EQU 3000h  ; native programs run here
-GUI_X     EQU 112    ; a program's window (see PGUI.INC)
-GUI_Y     EQU 72
+GUI_Y     EQU 72     ; a program's window (see PGUI.INC); x is guix
 GUI_CX    EQU 3      ; its client origin inside the frame
 GUI_CY    EQU 21
 
@@ -47,7 +45,8 @@ SUB_MAX   EQU 16     ; programs it can show
 DESK_SYS  EQU 5      ; desktop icons of the system itself
 DESK_MAX  EQU 15     ; program shortcuts: three more columns of five
 
-WEL_X     EQU 120
+WEL_X     EQU 120    ; dialogs: where they are on a 640 screen; dlgx
+                     ; is added to centre them on a wider one
 WEL_Y     EQU 96
 WEL_W     EQU 400
 WEL_H     EQU 250

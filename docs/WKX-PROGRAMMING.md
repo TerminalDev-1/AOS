@@ -73,7 +73,7 @@ access, so be careful.
 | `1000:0100` | the WinKit kernel | no |
 | `2000:0000` | cached FAT, root directory and a file buffer | no |
 | `3000:0000` | **your program**: stub at 0, code from `0100h`, stack at the top | yes |
-| `A000:0000` | VGA video memory (the desktop is in mode 12h) | do not touch |
+| `A000:0000` | VGA video memory (mode 12h; rows are 80 bytes, or 106 on QEMU's wide screen) | do not touch |
 
 Memory above your image is not cleared; treat all of it as uninitialised.
 
@@ -153,7 +153,8 @@ its Run button.
 A program can be a graphical one: `AH=10h` opens a window on top of the
 desktop, and the program draws in it and waits for events.
 
-* **One window, fixed.** It is 416 x 288 pixels at a fixed place, with the
+* **One window, fixed.** It is 416 x 288 pixels, centred on the screen
+  (which is 640 or 848 pixels wide; a program never needs to know), with the
   title you pass (at most 40 characters) and a close button. It cannot be
   moved, resized or minimized, and a program cannot have a second one.
   Calling `AH=10h` again wipes the window, which is the way to clear it.

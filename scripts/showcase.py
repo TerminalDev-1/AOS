@@ -64,7 +64,7 @@ def main():
             time.sleep(.7)
 
         shot("welcome", "Boots straight to the desktop (no DOS)")
-        click(330, 320)
+        click(434, 320)                  # the dialog is centred on 848
         shot("desktop", "Desktop: icons, taskbar, tray clock")
         click(44, 40)
         shot("icon-selected", "Single click selects a desktop icon")

@@ -499,9 +499,9 @@ mw_have:
     jns mw_x1
     xor ax,ax
 mw_x1:
-    cmp ax,WIN_XMAX
+    cmp ax,wxmax
     jbe mw_x2
-    mov ax,WIN_XMAX
+    mov ax,wxmax
 mw_x2:
     and ax,0fff8h
     cmp wx[bx],ax

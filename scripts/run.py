@@ -5,9 +5,9 @@ Usage: python scripts/run.py [--image out/winkit.img] [--hda disk.img]
                             [--boot a|c] [--snapshot] [--store]
                             [--fullscreen]
 
-The WinKit screen (640x480) is scaled to fill the QEMU window, whatever
-size you make it; --fullscreen starts on the whole monitor (Ctrl+Alt+F
-leaves full screen, Ctrl+Alt+G releases the mouse).
+The WinKit screen (848x480 under QEMU, see src/VIDEO.INC) is scaled to the
+QEMU window, whatever size you make it; --fullscreen starts on the whole
+monitor (Ctrl+Alt+F leaves full screen, Ctrl+Alt+G releases the mouse).
 
 --hda attaches a hard disk image (created empty, 16 MB, if the file does
 not exist) so that Start > Programs > SETUP can install WinKit on it.

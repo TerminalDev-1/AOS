@@ -204,8 +204,20 @@ pt_next:
     inc bx
     cmp bx,4
     L_JB pt_loop
-    BVL 548,455,90,22,BV_PANEL
-    TXT 560,458,K_BLACK,clockbuf
+    mov ax,clockx                      ; the tray clock, at the right edge
+    mov bvx,ax
+    mov bvy,455
+    mov bvw,90
+    mov bvh,22
+    mov bvm,BV_PANEL
+    call bevel
+    mov ax,clockx
+    add ax,12
+    mov tx,ax
+    mov ty,458
+    mov fg,K_BLACK
+    mov si,OFFSET clockbuf
+    call textout
     ret
 paint_taskbar ENDP
 
@@ -409,7 +421,9 @@ paint_sub ENDP
 
 ; ---- welcome dialog ----
 paint_welcome PROC NEAR
-    mov wox,WEL_X
+    mov ax,dlgx
+    add ax,WEL_X
+    mov wox,ax
     mov woy,WEL_Y
     mov cw_w,WEL_W
     mov cw_h,WEL_H
@@ -417,17 +431,27 @@ paint_welcome PROC NEAR
     mov tbmin,0
     mov si,OFFSET ttl_welcome
     call chrome
-    mov icx,144
+    mov ax,wox
+    add ax,144-WEL_X
+    mov icx,ax
     mov icy,136
     mov al,13
     call draw_icon
-    TXTBIG 196,132,K_NAVY,2,w_title
-    TXT 196,184,K_BLACK,w_sub
-    TXT 196,208,K_BLACK,w_body
-    TXT 196,240,K_SHADOW,w_hint
-    BOX 136,284,368,1,K_SHADOW
-    BOX 136,285,368,1,K_WHITE
-    mov orgx,0
+    mov ax,wox
+    add ax,196-WEL_X
+    mov tx,ax
+    mov ty,132
+    mov fg,K_NAVY
+    mov bsc,2
+    mov si,OFFSET w_title
+    call bigtext
+    WTXT 196-WEL_X,184-WEL_Y,K_BLACK,w_sub
+    WTXT 196-WEL_X,208-WEL_Y,K_BLACK,w_body
+    WTXT 196-WEL_X,240-WEL_Y,K_SHADOW,w_hint
+    WBOX 136-WEL_X,284-WEL_Y,368,1,K_SHADOW
+    WBOX 136-WEL_X,285-WEL_Y,368,1,K_WHITE
+    mov ax,dlgx
+    mov orgx,ax
     mov orgy,0
     mov si,OFFSET welcome_tab
     call draw_buttons
@@ -436,7 +460,9 @@ paint_welcome ENDP
 
 ; ---- Shut Down dialog ----
 paint_shutdown PROC NEAR
-    mov wox,SHD_X
+    mov ax,dlgx
+    add ax,SHD_X
+    mov wox,ax
     mov woy,SHD_Y
     mov cw_w,SHD_W
     mov cw_h,SHD_H
@@ -444,13 +470,16 @@ paint_shutdown PROC NEAR
     mov tbmin,0
     mov si,OFFSET ttl_shut
     call chrome
-    mov icx,160
+    mov ax,wox
+    add ax,160-SHD_X
+    mov icx,ax
     mov icy,146
     mov al,13
     call draw_icon
-    TXT 204,148,K_BLACK,sd_text
-    TXT 156,290,K_SHADOW,sd_hint
-    mov orgx,0
+    WTXT 204-SHD_X,148-SHD_Y,K_BLACK,sd_text
+    WTXT 156-SHD_X,290-SHD_Y,K_SHADOW,sd_hint
+    mov ax,dlgx
+    mov orgx,ax
     mov orgy,0
     mov si,OFFSET shut_tab
     call draw_buttons
@@ -460,9 +489,32 @@ paint_shutdown ENDP
 ; ---- "safe to power off" ----
 paint_offscreen PROC NEAR
     BOX 0,0,SCR_W,SCR_H,K_BLACK
-    TXTBIG 192,150,K_ORANGE,2,of_1
-    TXTBIG 208,190,K_ORANGE,2,of_2
-    TXTBIG 232,230,K_ORANGE,2,of_3
-    TXT 252,330,K_SHADOW,of_hint
+    mov fg,K_ORANGE
+    mov bsc,2
+    mov ax,dlgx
+    add ax,192
+    mov tx,ax
+    mov ty,150
+    mov si,OFFSET of_1
+    call bigtext
+    mov ax,dlgx
+    add ax,208
+    mov tx,ax
+    mov ty,190
+    mov si,OFFSET of_2
+    call bigtext
+    mov ax,dlgx
+    add ax,232
+    mov tx,ax
+    mov ty,230
+    mov si,OFFSET of_3
+    call bigtext
+    mov ax,dlgx
+    add ax,252
+    mov tx,ax
+    mov ty,330
+    mov fg,K_SHADOW
+    mov si,OFFSET of_hint
+    call textout
     ret
 paint_offscreen ENDP

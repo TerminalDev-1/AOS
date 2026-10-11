@@ -16,7 +16,7 @@ and the kernel's own FAT12 driver.
 
 ## What it has
 
-- **Desktop:** teal wallpaper, silver 3D-bevelled windows with gradient title
+- **Desktop:** widescreen under QEMU; teal wallpaper, silver 3D-bevelled windows with gradient title
   bars, Start menu, taskbar with window buttons and a clock, desktop icons,
   minimize and close, flicker-free window dragging.
 - **Apps:** Files (lists the disk), Notes (a text editor that saves to disk),
@@ -51,8 +51,9 @@ there is no third-party tool chain.
     python scripts/test_wkasm.py     # self-test of the assembler
     python scripts/showcase.py       # screenshots of every feature
 
-The 640x480 screen is scaled to fill the QEMU window; add `--fullscreen` to
-`run.py` to fill the monitor. The system calls itself **WinKit-preview**.
+Under QEMU, WinKit's display driver makes the desktop widescreen (848x480)
+so it fills the emulator window; on other video cards it is 640x480. The
+system calls itself **WinKit-preview**.
 
 See [BUILDING.md](BUILDING.md) for the controls, the terminal and how the code
 is organised.

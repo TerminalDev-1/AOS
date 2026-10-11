@@ -9,13 +9,35 @@
 
 Add `--snapshot` to `run.py` to discard disk writes when QEMU exits.
 
-`run.py` asks QEMU to scale WinKit's 640x480 screen to the size of its
-window (`-display gtk,zoom-to-fit=on`), so resizing or maximizing the
-window enlarges the desktop instead of leaving it as a small rectangle.
-`--fullscreen` starts on the whole monitor; Ctrl+Alt+F leaves full screen
-and Ctrl+Alt+G releases the mouse. This is a setting of the emulator's
-window: WinKit itself still draws 640x480 in VGA mode 12h and has no
-higher-resolution video driver.
+## The widescreen display driver
+
+Under QEMU the desktop is **848 x 480** (16:9), so it fills a widescreen
+emulator window instead of sitting in a 4:3 rectangle. That is WinKit's
+own doing, in [`src/VIDEO.INC`](src/VIDEO.INC), not an emulator option:
+
+* WinKit still uses VGA mode 12h (16 colours, four bit planes). A real
+  monitor needs that mode's exact timing, but QEMU has no monitor and
+  takes the picture size from the VGA registers. The driver changes two
+  CRT controller registers after the mode is set: the number of displayed
+  columns (106 instead of 80) and the length of a row in video memory.
+* It does this only when it recognises QEMU's video card by its "Bochs
+  VBE" ID register (ports 1CEh/1CFh). On any other card nothing is
+  touched and the screen stays 640 x 480; `python scripts/run.py` with
+  `-vga cirrus` in QEMU shows that fallback.
+* The height stays 480, so 848 x 480 is 50,880 bytes a plane and still
+  fits a VGA plane. QEMU's own 16-colour VBE modes are not used: a guest
+  cannot draw in them, because QEMU ignores the plane-select register
+  while VBE is on.
+* The screen size is not a constant in the kernel: `scrw`, `rowb` and the
+  values derived from them (`DATA.INC`) are set at start-up. The welcome
+  and Shut Down dialogs and a program's window are centred; the tray
+  clock follows the right edge; windows can be dragged across the full
+  width. A program's client area is unchanged (410 x 264).
+
+`run.py` also asks QEMU to scale the screen to its window
+(`-display gtk,zoom-to-fit=on`), so a maximized window shows a large
+desktop. `--fullscreen` is there if you want the whole monitor
+(Ctrl+Alt+F leaves it, Ctrl+Alt+G releases the mouse).
 
 ## Installing on a hard disk
 
@@ -65,6 +87,7 @@ loop and `INCLUDE`s the rest.
 | `MACROS.INC`, `CONST.INC` | long jumps and drawing macros; palette, layout, action codes |
 | `DATA.INC` | state, button tables, strings, palette, pointer bitmaps |
 | `GFX.INC` | clipped rectangles, pixel-accurate text, pointer, window blit |
+| `VIDEO.INC` | the QEMU display driver: widens mode 12h to 848 x 480 |
 | `WIDGETS.INC` | 3D bevels, title gradient, window chrome, icons, table-driven buttons |
 | `SCENES.INC` | desktop and icons, taskbar, Start menu, welcome and Shut Down dialogs |
 | `WINDOWS.INC` | Files / Notes / System bodies, minimize, dragging |
@@ -75,7 +98,8 @@ loop and `INCLUDE`s the rest.
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
 | `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE`, and the hard disk installer `SETUP` |
 
-The desktop uses VGA mode 12h (640x480) with its own 16-colour palette and
+The desktop uses VGA mode 12h (640x480, or 848x480 under QEMU) with its own
+16-colour palette and
 writes straight to planar video memory. PS/2 mouse input comes from the BIOS
 callback; the clock is the BIOS real-time clock. Only 8086 instructions are
 used.

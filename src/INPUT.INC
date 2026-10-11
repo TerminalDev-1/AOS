@@ -21,9 +21,9 @@ mc_xpos:
     L_JNS mc_xlow
     xor bx,bx
 mc_xlow:
-    cmp bx,SCR_W-1
+    cmp bx,maxx
     L_JLE mc_xhigh
-    mov bx,SCR_W-1
+    mov bx,maxx
 mc_xhigh:
     cmp mx,bx
     L_JE mc_xsame
@@ -354,7 +354,9 @@ click PROC NEAR
     mov orgy,0
     cmp viewstate,V_START
     L_JNE cl_notstart
-    mov ax,WEL_X+WEL_W-21              ; dialog close box
+    mov ax,dlgx
+    mov orgx,ax
+    add ax,WEL_X+WEL_W-21              ; dialog close box
     mov bx,WEL_Y+5
     mov cx,16
     mov dx,14
@@ -369,7 +371,9 @@ cl_welcome:
 cl_notstart:
     cmp viewstate,V_SHUTDOWN
     L_JNE cl_desktop
-    mov ax,SHD_X+SHD_W-21
+    mov ax,dlgx
+    mov orgx,ax
+    add ax,SHD_X+SHD_W-21
     mov bx,SHD_Y+5
     mov cx,16
     mov dx,14
@@ -468,7 +472,9 @@ key_input PROC NEAR
 ki_notleft:
     cmp ah,4dh
     L_JNE ki_notright
-    cmp mx,SCR_W-9
+    mov bx,maxx
+    sub bx,8
+    cmp mx,bx
     L_JA ki_done
     add mx,8
     mov curdirty,1

@@ -2,6 +2,7 @@
 ; Planes are written through the set/reset + bit-mask path: set/reset holds
 ; the colour, the bit mask selects pixels, the latches supply the rest.
 ; Every primitive is clipped to clx0..clx1 / cly0..cly1 (x in multiples of 8).
+; A row is rowb bytes: 80, or more in the QEMU wide mode (VIDEO.INC).
 
 ; Palette: identity attribute map, then our own DAC colours.
 set_palette PROC NEAR
@@ -29,7 +30,7 @@ rcol PROC NEAR
 rcol_row:
     mov al,es:[di]                     ; load latches for unmasked pixels
     mov es:[di],al
-    add di,80
+    add di,rowb
     loop rcol_row
     ret
 rcol ENDP
@@ -73,7 +74,7 @@ rc_d:
     L_JAE rc_exit
     sub bx,ax
     mov rrows,bx
-    mov bx,80
+    mov bx,rowb
     mul bx
     mov di,ax                          ; di = first row offset
     mov cl,3
@@ -146,7 +147,7 @@ rc_span:
     xor al,al
     rep stosb
     pop di
-    add di,80
+    add di,rowb
     dec bx
     jnz rc_span
 rc_end:
@@ -201,7 +202,7 @@ to_b:
     mov tpx,ax
     mov ax,ty
     add ax,tr0
-    mov bx,80
+    mov bx,rowb
     mul bx
     mov trow,ax
     mov ax,0a000h
@@ -277,7 +278,7 @@ to_w1:
     mov es:[di+1],al
 to_next:
     inc glyph
-    add di,80
+    add di,rowb
     dec bp
     jnz to_row
     jmp to_char
@@ -495,7 +496,7 @@ cursor_mask PROC NEAR
     xor al,al
     out dx,ax                          ; set/reset value = colour
     mov ax,cury
-    mov bx,80
+    mov bx,rowb
     mul bx
     mov di,ax
     mov bx,curx
@@ -531,14 +532,17 @@ cm_shifted:
     out dx,ax                          ; first byte
     mov al,es:[di]
     mov es:[di],al
-    cmp ccol,79
+    mov ax,lastcol
+    cmp ccol,ax
     jae cm_next
     mov ah,bh
     mov al,8
     out dx,ax                          ; second byte
     mov al,es:[di+1]
     mov es:[di+1],al
-    cmp ccol,78
+    mov ax,lastcol
+    dec ax
+    cmp ccol,ax
     jae cm_next
     mov ah,bl
     mov al,8
@@ -546,7 +550,7 @@ cm_shifted:
     mov al,es:[di+2]
     mov es:[di+2],al
 cm_next:
-    add di,80
+    add di,rowb
     pop cx
     dec cx
     L_JNZ cm_row
@@ -573,7 +577,7 @@ save_under PROC NEAR
     mov ax,0a000h
     mov es,ax
     mov ax,cury
-    mov bx,80
+    mov bx,rowb
     mul bx
     mov bx,curx
     mov cl,3
@@ -599,7 +603,7 @@ su_row:
     mov al,es:[si+2]
     mov [di+2],al
     add di,3
-    add si,80
+    add si,rowb
     loop su_row
     pop si
     inc bl
@@ -647,17 +651,20 @@ ru_plane:
 ru_row:
     mov al,[si]
     mov es:[di],al
-    cmp savedcol,79
+    mov ax,lastcol
+    cmp savedcol,ax
     jae ru_clip
     mov al,[si+1]
     mov es:[di+1],al
-    cmp savedcol,78
+    mov ax,lastcol
+    dec ax
+    cmp savedcol,ax
     jae ru_clip
     mov al,[si+2]
     mov es:[di+2],al
 ru_clip:
     add si,3
-    add di,80
+    add di,rowb
     loop ru_row
     pop di
     shl bl,1
@@ -709,7 +716,8 @@ repaint_area PROC NEAR
     mov clipped,0
     mov clx0,0
     mov cly0,0
-    mov clx1,SCR_W
+    mov ax,scrw
+    mov clx1,ax
     mov cly1,SCR_H
 ra_done:
     ret
@@ -729,19 +737,22 @@ blit_window PROC NEAR
     mov nwy,ax
     call restore_under
     mov ax,oldy
-    mov cx,80
+    mov cx,rowb
     mul cx
     mov si,oldx
     mov cl,3
     shr si,cl
     add si,ax
     mov ax,nwy
-    mov cx,80
+    mov cx,rowb
     mul cx
     mov di,nwx
     mov cl,3
     shr di,cl
     add di,ax
+    mov bp,rowskip                     ; kernel data is out of reach below
+    mov ax,backofs
+    push ax
     push ds
     mov ax,0a000h
     mov ds,ax
@@ -749,17 +760,20 @@ blit_window PROC NEAR
     mov dx,3ceh
     mov ax,0105h                       ; write mode 1: copy the latches
     out dx,ax
+    pop bx                             ; DS, kept in BX for a moment
+    pop ax                             ; AX = backofs
+    push bx
     cmp di,si
     jb bw_fwd
-    add si,BACK_OFS                    ; moving down/right: copy backwards
-    add di,BACK_OFS
+    add si,ax                          ; moving down/right: copy backwards
+    add di,ax
     std
     mov bx,WIN_H
 bw_back:
     mov cx,WIN_W/8
     rep movsb
-    sub si,80-WIN_W/8
-    sub di,80-WIN_W/8
+    sub si,bp
+    sub di,bp
     dec bx
     L_JNZ bw_back
     cld
@@ -770,8 +784,8 @@ bw_fwd:
 bw_fwd_row:
     mov cx,WIN_W/8
     rep movsb
-    add si,80-WIN_W/8
-    add di,80-WIN_W/8
+    add si,bp
+    add di,bp
     dec bx
     L_JNZ bw_fwd_row
 bw_copied:

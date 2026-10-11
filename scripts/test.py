@@ -12,6 +12,13 @@ import wkstore
 from qemu import Machine, free_port
 
 ROOT = Path(__file__).resolve().parent.parent
+# QEMU gets the wide screen (src/VIDEO.INC): 848 x 480. The two dialogs
+# are centred, so they sit DLG pixels right of their 640-wide positions,
+# and a program's window is at WIN_X with its client area at CX, CY.
+WIDTH = 848
+DLG = (WIDTH - 640) // 2
+WIN_X, WIN_Y = (WIDTH - 416) // 2, 72
+CX, CY = WIN_X + 3, WIN_Y + 21
 SHOTS = ROOT / "out" / "screens" / "gui"
 
 
@@ -114,10 +121,15 @@ def main():
             return term_text()
 
         # ---- boot and desktop ----
+        m.screenshot(str(SHOTS / "00-size.png"))
+        with open(SHOTS / "00-size.png", "rb") as fh:
+            size = struct.unpack(">2I", fh.read(24)[16:])
+        check("the QEMU display driver gives a widescreen desktop",
+              size == (WIDTH, 480))
         check("boots straight into the VGA desktop", state()[0] == 0)
         check("PS/2 mouse enabled without any driver", state()[4] == 1)
         shot("01-welcome")
-        click(330, 320)                  # OK on the welcome dialog
+        click(DLG + 330, 320)                  # OK on the welcome dialog
         check("mouse enters desktop", state()[0] == 1)
         click(30, 466)                   # Start button
         click(100, 258)                  # Files in the Start menu
@@ -191,12 +203,11 @@ def main():
         check("ver identifies WinKit", "WinKit" in out)
 
         # ---- the WinKit Store: a download over the serial port ----
-        # WKSTORE.WKX draws its own window (INT 80h 10h..14h) at 112,72; its
-        # client area starts 3,21 inside that.
+        # WKSTORE.WKX draws its own window (INT 80h 10h..15h).
         m.key("f7")
         time.sleep(2)
-        click(115 + 100, 93 + 43 + 18 + 5)   # second row of the list: DICE
-        click(115 + 40, 93 + 14)             # the Install button
+        click(CX + 100, CY + 43 + 18 + 5)   # second row of the list: DICE
+        click(CX + 40, CY + 14)            # the Install button
         time.sleep(2)
         shot("08-store")
         check("the Store is a program with its own window",
@@ -204,12 +215,12 @@ def main():
         m.key("up")                          # first row: CLOCK
         m.key("ret")                         # Enter installs too
         time.sleep(2)
-        click(115 + 108, 93 + 14)            # the Run button
+        click(CX + 108, CY + 14)           # the Run button
         time.sleep(1.5)
         check("Run in the Store starts the installed program in a window",
               gui() == (1, "Clock"))
         shot("09-store-app")
-        click(112 + 416 - 13, 72 + 11)       # the window's close button
+        click(WIN_X + 416 - 13, WIN_Y + 11)      # the window's close button
         time.sleep(1)
         check("closing it brings the desktop back",
               gui()[0] == 0 and state()[1] == 13 and state()[2] == 4)
@@ -240,7 +251,7 @@ def main():
         m.key("esc")
         time.sleep(1)
         run("window")                        # a program with its own window
-        click(115 + 60, 93 + 30)             # its Quit button
+        click(CX + 60, CY + 30)            # its Quit button
         time.sleep(1)
         check("a windowed program gets its click and returns",
               "The window is closed." in term_text())
@@ -255,13 +266,13 @@ def main():
 
         # ---- restart: the saved file must survive a reboot ----
         m.key("f10")
-        click(310, 226)                  # "Restart"
-        click(256, 332)                  # OK
+        click(DLG + 310, 226)                 # "Restart"
+        click(DLG + 256, 332)                 # OK
         time.sleep(2)
         wait_gui()
         state_addr, term_addr = locate()
         check("Restart reboots into the desktop", state()[0] == 0)
-        click(330, 320)
+        click(DLG + 330, 320)
         shot("12-shortcuts")
         dblclick(124, 96 + 24)               # second column: SETUP, DICE, CLOCK
         time.sleep(1.5)
@@ -283,7 +294,7 @@ def main():
         memory = Path(m.tmp) / "ram.bin"
         wait_gui()
         state_addr, term_addr = locate()
-        click(330, 320)                      # OK on the welcome dialog
+        click(DLG + 330, 320)                      # OK on the welcome dialog
         dblclick(124, 16 + 24)               # the Setup shortcut
         time.sleep(1.5)
         check("Setup has a desktop shortcut that opens it",

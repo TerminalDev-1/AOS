@@ -1,6 +1,6 @@
 ; PGUI.INC - a window for native programs: INT 80h functions 10h..15h.
 ;
-; A program gets one window, WIN_W x WIN_H at GUI_X/GUI_Y, on top of the
+; A program gets one window, WIN_W x WIN_H at guix/GUI_Y, on top of the
 ; desktop. It draws with client coordinates (0,0 is the pixel under the
 ; left end of the title bar; the client area is 410 x 264) and everything is
 ; clipped to the window. The pointer is only on screen while the program
@@ -26,7 +26,8 @@ gui_copy ENDP
 gui_fullclip PROC NEAR
     mov clx0,0
     mov cly0,0
-    mov clx1,SCR_W
+    mov ax,scrw
+    mov clx1,ax
     mov cly1,SCR_H
     ret
 gui_fullclip ENDP
@@ -34,7 +35,8 @@ gui_fullclip ENDP
 ; The caller's BX,CX (client x,y) -> AX,DX in screen pixels.
 gui_xy PROC NEAR
     mov ax,[bp+14]
-    add ax,GUI_X+GUI_CX
+    add ax,guix
+    add ax,GUI_CX
     mov dx,[bp+12]
     add dx,GUI_Y+GUI_CY
     ret
@@ -55,7 +57,8 @@ sys_gopen:
     mov guiopen,1
 go_draw:
     call gui_fullclip
-    mov wox,GUI_X
+    mov ax,guix
+    mov wox,ax
     mov woy,GUI_Y
     mov cw_w,WIN_W
     mov cw_h,WIN_H
@@ -63,8 +66,10 @@ go_draw:
     mov tbmin,0
     mov si,OFFSET guititle
     call chrome
-    mov clx0,GUI_X                     ; from now on: inside the frame only
-    mov clx1,GUI_X+WIN_W
+    mov ax,guix                        ; from now on: inside the frame only
+    mov clx0,ax
+    add ax,WIN_W
+    mov clx1,ax
     mov cly0,GUI_Y+GUI_CY
     mov cly1,GUI_Y+WIN_H-3
     jmp sys_back
@@ -149,7 +154,7 @@ ge_btn:
     test al,1
     jz ge_key
     mov ax,mx                          ; a press: where in the window?
-    sub ax,GUI_X
+    sub ax,guix
     jb ge_key
     cmp ax,WIN_W
     jae ge_key
