@@ -234,27 +234,45 @@ paint_menu PROC NEAR
     call rottext
     xor bx,bx                          ; items 0..6
 pm_item:
+    call menu_item
+    inc bx
+    cmp bx,7
+    jb pm_item
+    BOX 34,413,140,1,K_SHADOW
+    BOX 34,414,140,1,K_WHITE
+    cmp subopen,0
+    je pm_end
+    call paint_sub
+pm_end:
+    ret
+paint_menu ENDP
+
+; One Start menu item, BX = 0..6: its background, icon and text. It covers
+; its whole row, so the pointer moving over the menu redraws two rows and
+; nothing else. Keeps BX.
+menu_item PROC NEAR
+    push bx
     mov ax,bx
     mov cx,28
     mul cx
     add ax,244                         ; y of the item
     cmp bx,6
-    jb pm_y
+    jb mit_y
     add ax,9                           ; room for the separator
-pm_y:
+mit_y:
     mov bby,ax
-    mov fg,K_BLACK
-    cmp bl,menuhot
-    jne pm_draw
     mov rx,33
     mov ry,ax
     mov rw,141
     mov rh,28
+    mov ink,K_FACE
+    mov fg,K_BLACK
+    cmp bl,menuhot
+    jne mit_bg
     mov ink,K_NAVY
-    call rect
     mov fg,K_WHITE
-pm_draw:
-    push bx
+mit_bg:
+    call rect
     mov icx,40
     mov ax,bby
     add ax,6
@@ -262,54 +280,42 @@ pm_draw:
     mov ax,bx
     inc ax                             ; 1..3 files/notes/system
     cmp ax,4
-    jb pm_kind
-    je pm_term
+    jb mit_kind
+    je mit_term
     cmp ax,5
-    je pm_store
+    je mit_store
     cmp ax,6
-    je pm_progs
+    je mit_progs
     mov ax,4                           ; power icon for Shut Down
-    jmp pm_kind
-pm_progs:
+    jmp mit_kind
+mit_progs:
     mov ax,1                           ; a folder
-    jmp pm_kind
-pm_store:
+    jmp mit_kind
+mit_store:
     mov ax,6
-    jmp pm_kind
-pm_term:
+    jmp mit_kind
+mit_term:
     mov ax,5                           ; terminal
-pm_kind:
+mit_kind:
     call draw_icon
-    pop bx
-    push bx
     mov tx,64
     mov ax,bby
     add ax,6
     mov ty,ax
+    push bx
     shl bx,1
     mov si,menuptr[bx]
     call textout
     pop bx
-    inc bx
-    cmp bx,7
-    L_JB pm_item
-    BOX 34,413,140,1,K_SHADOW
-    BOX 34,414,140,1,K_WHITE
-    mov tx,160                         ; Programs leads to a list
-    mov ty,390
-    mov fg,K_BLACK
-    cmp menuhot,5
-    jne pm_arrow
-    mov fg,K_WHITE
-pm_arrow:
+    cmp bx,5                           ; Programs leads to a list
+    jne mit_done
+    mov tx,160
     mov si,OFFSET s_arrow
     call textout
-    cmp subopen,0
-    je pm_end
-    call paint_sub
-pm_end:
+mit_done:
+    pop bx
     ret
-paint_menu ENDP
+menu_item ENDP
 
 ; ---- the Programs list: one row per .WKX on the disk ----
 
@@ -364,6 +370,16 @@ paint_sub PROC NEAR
 psb_rows:
     xor bx,bx
 psb_row:
+    call sub_line
+    inc bx
+    cmp bx,progcount
+    jb psb_row
+    ret
+paint_sub ENDP
+
+; One row of the Programs list, BX = its index: background, icon and name.
+; Keeps BX.
+sub_line PROC NEAR
     push bx
     call sub_top
     add ax,3
@@ -372,39 +388,38 @@ psb_row:
     mov cx,SUB_ROW
     mul cx
     add bby,ax
-    mov fg,K_BLACK
-    cmp bl,subhot
-    jne psb_draw
     mov rx,SUB_X+3
     mov ax,bby
     mov ry,ax
     mov rw,SUB_W-6
     mov rh,SUB_ROW
+    mov ink,K_FACE
+    mov fg,K_BLACK
+    cmp bl,subhot
+    jne sbr_bg
     mov ink,K_NAVY
-    call rect
     mov fg,K_WHITE
-psb_draw:
+sbr_bg:
+    call rect
     mov icx,SUB_X+8
     mov ax,bby
     inc ax
     mov icy,ax
     mov al,7
     call draw_icon
-    pop bx
-    push bx
     shl bx,1
     mov si,progptr[bx]                 ; the name without ".WKX"
     mov di,OFFSET linebuf
-psb_name:
+sbr_name:
     lodsb
     cmp al,'.'
-    je psb_end
+    je sbr_end
     or al,al
-    jz psb_end
+    jz sbr_end
     mov [di],al
     inc di
-    jmp psb_name
-psb_end:
+    jmp sbr_name
+sbr_end:
     mov byte ptr [di],0
     mov tx,SUB_X+30
     mov ax,bby
@@ -413,11 +428,8 @@ psb_end:
     mov si,OFFSET linebuf
     call textout
     pop bx
-    inc bx
-    cmp bx,progcount
-    L_JB psb_row
     ret
-paint_sub ENDP
+sub_line ENDP
 
 ; ---- welcome dialog ----
 paint_welcome PROC NEAR

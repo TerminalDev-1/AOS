@@ -450,17 +450,63 @@ mh_cmp:
     cmp ah,subopen
     jne mh_new
     cmp bl,subhot
-    je mh_done
+    L_JE mh_done
 mh_new:
+    mov dl,menuhot                     ; DL, DH, CL = how it was
+    mov dh,subopen
+    mov cl,subhot
     mov menuhot,al
     mov subopen,ah
     mov subhot,bl
     call restore_under
-    mov ax,0
-    mov bx,152                         ; the list can be taller than the menu
+    xor bx,bx                          ; only the rows that changed are drawn:
+    mov bl,dl                          ; repainting the scene made it flicker
+    cmp bl,0ffh
+    je mh_now
+    push cx
+    push dx
+    call menu_item
+    pop dx
+    pop cx
+mh_now:
+    xor bx,bx
+    mov bl,menuhot
+    cmp bl,0ffh
+    je mh_list
+    push cx
+    push dx
+    call menu_item
+    pop dx
+    pop cx
+mh_list:
+    cmp dh,subopen
+    je mh_rows
+    cmp subopen,0
+    jne mh_opened
+    mov ax,176                         ; the list went away: what was under it
+    mov bx,152
     mov cx,336
     mov dx,TASK_Y
     call repaint_area
+    jmp mh_show
+mh_opened:
+    call paint_sub
+    jmp mh_show
+mh_rows:
+    cmp subopen,0
+    je mh_show
+    xor bx,bx
+    mov bl,cl
+    cmp bl,0ffh
+    je mh_row
+    call sub_line
+mh_row:
+    xor bx,bx
+    mov bl,subhot
+    cmp bl,0ffh
+    je mh_show
+    call sub_line
+mh_show:
     call cursor_show
 mh_done:
     ret
