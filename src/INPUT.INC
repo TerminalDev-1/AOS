@@ -114,7 +114,7 @@ da_done:
     ret
 do_action ENDP
 
-; Start menu item under the pointer: AL = 0..5 or 0FFh.
+; Start menu item under the pointer: AL = 0..6 or 0FFh.
 menu_item_at PROC NEAR
     push bx
     mov ax,mx
@@ -123,7 +123,7 @@ menu_item_at PROC NEAR
     cmp ax,175
     jae mi_none
     mov ax,my
-    cmp ax,272
+    cmp ax,244
     jb mi_none
     cmp ax,449
     jae mi_none
@@ -131,10 +131,10 @@ menu_item_at PROC NEAR
     jb mi_items
     cmp ax,421
     jb mi_none
-    mov al,5
+    mov al,6
     jmp mi_out
 mi_items:
-    sub ax,272
+    sub ax,244
     mov bl,28
     div bl
     jmp mi_out
@@ -145,19 +145,78 @@ mi_out:
     ret
 menu_item_at ENDP
 
-; A click while the Start menu is open: it always closes.
+; Program in the Programs list under the pointer: AL = index or 0FFh.
+sub_item_at PROC NEAR
+    push bx
+    mov ax,mx
+    cmp ax,SUB_X+3
+    jb si_none
+    cmp ax,SUB_X+SUB_W-3
+    jae si_none
+    call sub_top
+    add ax,3
+    mov bx,my
+    sub bx,ax
+    jb si_none
+    mov ax,bx
+    mov bl,SUB_ROW
+    div bl
+    xor ah,ah
+    cmp ax,progcount
+    jb si_out
+si_none:
+    mov al,0ffh
+si_out:
+    pop bx
+    ret
+sub_item_at ENDP
+
+; The Start menu has just opened: no list yet, and a fresh look at the disk
+; so that Programs shows what is installed now.
+menu_opened PROC NEAR
+    mov subopen,0
+    mov subhot,0ffh
+    mov ax,filepage                    ; the Files window keeps its page
+    push ax
+    call refresh_files
+    pop ax
+    cmp ax,filecount
+    jae mo_done
+    mov filepage,ax
+mo_done:
+    ret
+menu_opened ENDP
+
+; A click while the Start menu is open. It closes, except on Programs.
 menu_click PROC NEAR
-    mov menuopen,0
     mov ax,2                           ; the Start button just closes it
     mov bx,455
     mov cx,72
     mov dx,22
     call pt_in
-    jc mcl_done
+    jc mcl_close
+    cmp subopen,0
+    je mcl_main
+    call sub_item_at                   ; a program in the list: run it
+    cmp al,0ffh
+    je mcl_main
+    xor bx,bx
+    mov bl,al
+    shl bx,1
+    mov si,progptr[bx]
+    mov menuopen,0
+    jmp run_named
+mcl_main:
     call menu_item_at
     cmp al,0ffh
-    je mcl_done
+    je mcl_close
     cmp al,5
+    jne mcl_item
+    mov subopen,1                      ; Programs: show its list
+    ret
+mcl_item:
+    mov menuopen,0
+    cmp al,6
     je mcl_shut
     inc al                             ; Files / Notes / System / WinKit
     cmp al,5
@@ -168,7 +227,8 @@ mcl_go:
 mcl_shut:
     mov al,A_SHUTDOWN
     jmp do_action
-mcl_done:
+mcl_close:
+    mov menuopen,0
     ret
 menu_click ENDP
 
@@ -203,7 +263,7 @@ task_click PROC NEAR
     jnc tk_tasks
     mov menuopen,1
     mov menuhot,0ffh
-    ret
+    jmp menu_opened
 tk_tasks:
     mov fk,0
     mov slot,0
@@ -342,13 +402,43 @@ click ENDP
 ; Keep the Start menu highlight in step with the pointer.
 menu_hover PROC NEAR
     call menu_item_at
+    mov ah,subopen                     ; AH = should the Programs list show?
+    cmp al,5
+    jne mh_other
+    mov ah,1
+    jmp mh_sub
+mh_other:
+    cmp al,0ffh
+    je mh_sub
+    xor ah,ah                          ; on another item: it goes away
+mh_sub:
+    mov bl,0ffh                        ; BL = program under the pointer
+    or ah,ah
+    jz mh_cmp
+    push ax
+    call sub_item_at
+    mov bl,al
+    pop ax
+    cmp al,0ffh                        ; in the list: Programs stays lit
+    jne mh_cmp
+    cmp bl,0ffh
+    je mh_cmp
+    mov al,5
+mh_cmp:
     cmp al,menuhot
+    jne mh_new
+    cmp ah,subopen
+    jne mh_new
+    cmp bl,subhot
     je mh_done
+mh_new:
     mov menuhot,al
+    mov subopen,ah
+    mov subhot,bl
     call restore_under
     mov ax,0
-    mov bx,MENU_Y
-    mov cx,184
+    mov bx,152                         ; the list can be taller than the menu
+    mov cx,336
     mov dx,TASK_Y
     call repaint_area
     call cursor_show
@@ -446,7 +536,7 @@ ki_notesc:
     L_JNE ki_notmenu
     xor menuopen,1
     mov menuhot,0ffh
-    ret
+    jmp menu_opened
 ki_notmenu:
     cmp ah,3bh                         ; F1..F3 open Files/Notes/System
     L_JB ki_notfn

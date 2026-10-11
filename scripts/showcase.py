@@ -70,9 +70,9 @@ def main():
         shot("icon-selected", "Single click selects a desktop icon")
 
         click(30, 466)
-        mouse(100, 314)
+        mouse(100, 286)
         shot("start-menu", "Start menu with hover highlight")
-        click(100, 314)
+        click(100, 286)
         m.type("Hello from WinKit")
         m.key("f4")
         time.sleep(1.5)

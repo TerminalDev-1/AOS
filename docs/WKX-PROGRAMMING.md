@@ -245,8 +245,10 @@ CODE ENDS
 END start
 ```
 
-A program is started by clicking it in the Files window, by name in the
-terminal, or by another program with `AH=5`. The Store (`WKSTORE.WKX`) is
+A program is started from Start > Programs (every `.WKX` on the disk is
+listed there, so yours appears as soon as it is on the disk), by clicking
+it in the Files window, by name in the terminal, or by another program
+with `AH=5`. The Store (`WKSTORE.WKX`) is
 the one program that also has a Start menu entry, a desktop icon and a key
 (F7). A program started from the desktop that prints with `AH=1`/`AH=2` or
 reads a key with `AH=3` gets the terminal window opened for it.
@@ -377,6 +379,7 @@ All of these are in `src/progs/` and are built into the image.
 | `REVERSE.ASM` | reading a line with `AH=3`, indexed data, the full example below |
 | `HI.ASM` | the quick-start program |
 | `WINDOW.ASM` | the minimum windowed program: a window, a button, click and close events |
+| `SETUP.ASM` | the hard disk installer: a windowed program doing raw sector I/O with BIOS `INT 13h`, with a progress bar |
 | `WKSTORE.ASM` | the WinKit Store: a windowed program (buttons, a list, clicks and keys), polling the serial port, `INT 1Ah` timeouts, `AH=4` to save a file |
 
 The programs offered by the WinKit Store are in `store/`: `CLOCK.ASM`

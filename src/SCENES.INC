@@ -184,7 +184,7 @@ paint_taskbar ENDP
 ; ---- Start menu ----
 paint_menu PROC NEAR
     BVL MENU_X,MENU_Y,MENU_W,MENU_H,BV_WINDOW
-    BOX 5,272,26,177,K_SHADOW
+    BOX 5,244,26,205,K_SHADOW
     mov tx,9
     mov ty,444
     mov fg,K_WHITE
@@ -192,13 +192,13 @@ paint_menu PROC NEAR
     call rottext
     mov tx,10
     call rottext
-    xor bx,bx                          ; items 0..5
+    xor bx,bx                          ; items 0..6
 pm_item:
     mov ax,bx
     mov cx,28
     mul cx
-    add ax,272                         ; y of the item
-    cmp bx,5
+    add ax,244                         ; y of the item
+    cmp bx,6
     jb pm_y
     add ax,9                           ; room for the separator
 pm_y:
@@ -226,7 +226,12 @@ pm_draw:
     je pm_term
     cmp ax,5
     je pm_store
+    cmp ax,6
+    je pm_progs
     mov ax,4                           ; power icon for Shut Down
+    jmp pm_kind
+pm_progs:
+    mov ax,1                           ; a folder
     jmp pm_kind
 pm_store:
     mov ax,6
@@ -246,12 +251,133 @@ pm_kind:
     call textout
     pop bx
     inc bx
-    cmp bx,6
+    cmp bx,7
     L_JB pm_item
     BOX 34,413,140,1,K_SHADOW
     BOX 34,414,140,1,K_WHITE
+    mov tx,160                         ; Programs leads to a list
+    mov ty,390
+    mov fg,K_BLACK
+    cmp menuhot,5
+    jne pm_arrow
+    mov fg,K_WHITE
+pm_arrow:
+    mov si,OFFSET s_arrow
+    call textout
+    cmp subopen,0
+    je pm_end
+    call paint_sub
+pm_end:
     ret
 paint_menu ENDP
+
+; ---- the Programs list: one row per .WKX on the disk ----
+
+; AX = rows in the list (an empty one still has a row).
+sub_rows PROC NEAR
+    mov ax,progcount
+    or ax,ax
+    jnz sr_done
+    inc ax
+sr_done:
+    ret
+sub_rows ENDP
+
+; AX = y of the top of the list; its bottom lines up with the menu's.
+sub_top PROC NEAR
+    push cx
+    push dx
+    call sub_rows
+    mov cx,SUB_ROW
+    mul cx
+    add ax,6
+    mov cx,ax
+    mov ax,449
+    sub ax,cx
+    pop dx
+    pop cx
+    ret
+sub_top ENDP
+
+paint_sub PROC NEAR
+    call sub_rows
+    mov cx,SUB_ROW
+    mul cx
+    add ax,6
+    mov bvh,ax
+    call sub_top
+    mov bvy,ax
+    mov bvx,SUB_X
+    mov bvw,SUB_W
+    mov bvm,BV_WINDOW
+    call bevel
+    cmp progcount,0
+    jne psb_rows
+    mov ax,bvy
+    add ax,4
+    mov ty,ax
+    mov tx,SUB_X+12
+    mov fg,K_SHADOW
+    mov si,OFFSET s_noprogs
+    call textout
+    ret
+psb_rows:
+    xor bx,bx
+psb_row:
+    push bx
+    call sub_top
+    add ax,3
+    mov bby,ax
+    mov ax,bx
+    mov cx,SUB_ROW
+    mul cx
+    add bby,ax
+    mov fg,K_BLACK
+    cmp bl,subhot
+    jne psb_draw
+    mov rx,SUB_X+3
+    mov ax,bby
+    mov ry,ax
+    mov rw,SUB_W-6
+    mov rh,SUB_ROW
+    mov ink,K_NAVY
+    call rect
+    mov fg,K_WHITE
+psb_draw:
+    mov icx,SUB_X+8
+    mov ax,bby
+    inc ax
+    mov icy,ax
+    mov al,7
+    call draw_icon
+    pop bx
+    push bx
+    shl bx,1
+    mov si,progptr[bx]                 ; the name without ".WKX"
+    mov di,OFFSET linebuf
+psb_name:
+    lodsb
+    cmp al,'.'
+    je psb_end
+    or al,al
+    jz psb_end
+    mov [di],al
+    inc di
+    jmp psb_name
+psb_end:
+    mov byte ptr [di],0
+    mov tx,SUB_X+30
+    mov ax,bby
+    inc ax
+    mov ty,ax
+    mov si,OFFSET linebuf
+    call textout
+    pop bx
+    inc bx
+    cmp bx,progcount
+    L_JB psb_row
+    ret
+paint_sub ENDP
 
 ; ---- welcome dialog ----
 paint_welcome PROC NEAR

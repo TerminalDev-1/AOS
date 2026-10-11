@@ -41,9 +41,65 @@ rf_skip:
     jnz rf_next
 rf_done:
     pop es
+    call prog_scan
     mov dirty,1
     ret
 refresh_files ENDP
+
+; List the programs in files[] for the Start menu: every .WKX except the
+; Store, which has its own entry. progptr[] points at their names.
+prog_scan PROC NEAR
+    push ax
+    push bx
+    push cx
+    push si
+    push di
+    push es
+    push ds
+    pop es
+    mov progcount,0
+    mov cx,filecount
+    mov si,OFFSET files+1
+    jcxz pgs_done
+pgs_next:
+    cmp progcount,SUB_MAX
+    jae pgs_done
+    mov bx,si
+pgs_dot:
+    mov al,[bx]
+    or al,al
+    jz pgs_skip
+    inc bx
+    cmp al,'.'
+    jne pgs_dot
+    cmp word ptr [bx],4b57h            ; "WK"
+    jne pgs_skip
+    cmp word ptr [bx+2],0058h          ; "X", end of name
+    jne pgs_skip
+    push si
+    push cx
+    mov di,OFFSET storefile
+    mov cx,12
+    repe cmpsb
+    pop cx
+    pop si
+    je pgs_skip
+    mov bx,progcount
+    shl bx,1
+    mov progptr[bx],si
+    inc progcount
+pgs_skip:
+    add si,14
+    loop pgs_next
+pgs_done:
+    pop es
+    pop di
+    pop si
+    pop cx
+    pop bx
+    pop ax
+    ret
+prog_scan ENDP
 
 ; A click in the Files list: a .WKX program under the pointer is run.
 files_click PROC NEAR

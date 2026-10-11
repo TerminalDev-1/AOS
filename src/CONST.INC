@@ -37,9 +37,13 @@ GUI_CX    EQU 3      ; its client origin inside the frame
 GUI_CY    EQU 21
 
 MENU_X    EQU 2
-MENU_Y    EQU 269
+MENU_Y    EQU 241
 MENU_W    EQU 176
-MENU_H    EQU 183
+MENU_H    EQU 211
+SUB_X     EQU 178    ; the Programs list beside the Start menu
+SUB_W     EQU 152
+SUB_ROW   EQU 18
+SUB_MAX   EQU 16     ; programs it can show
 
 WEL_X     EQU 120
 WEL_Y     EQU 96

@@ -21,6 +21,7 @@ rest of DOS is there too. It is not. In particular, none of these exist:
 | a DOS file API (handles, `open`, `findfirst`) | a kernel FAT12 driver (`src/FS.INC`); a program can save one whole file (`INT 80h` `AH=4`) and nothing else |
 | a network, TCP/IP, sockets, a modem dialler, an internet app store | `WKSTORE.WKX` fetches programs over the serial port (COM1) from `scripts/wkstore.py` on the host |
 | a windowing API (message loops, several windows, controls, bitmaps, fonts) | a program may open **one** fixed window and draw rectangles, bevels and text in it (`INT 80h` `AH=10h`-`15h`) |
+| `FDISK`, `FORMAT`, `SYS`, partitions, an MBR, a boot manager | `SETUP.WKX` copies the running system over the whole first hard disk; there is no partition table |
 | TSRs, device drivers, `INT 21h AH=31h` | not supported |
 | MASM, LINK, EXE2BIN, DOSBox | `scripts/wkasm.py`, pure Python |
 
@@ -54,7 +55,8 @@ Do this for **every feature or fix, without being asked**. Do not stop to ask
 whether to commit or push; the owner has already said yes.
 
 1. Build: `python scripts/mkimage.py`.
-2. Test: `python scripts/test.py` and `python scripts/test_wkasm.py`. Add or
+2. Test: `python scripts/test.py` (about three minutes) and
+   `python scripts/test_wkasm.py`. Add or
    update a check in `scripts/test.py` for what you changed.
 3. If a test fails, fix it first. Never commit or push a failing tree.
 4. Update the docs that the change makes wrong (this file, `README.md`,

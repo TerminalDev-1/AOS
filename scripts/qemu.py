@@ -46,15 +46,19 @@ def free_port():
 
 
 class Machine:
-    def __init__(self, floppy, mem=4, cpu="486", snapshot=True, extra=()):
+    def __init__(self, floppy, mem=4, cpu="486", snapshot=True, extra=(),
+                 hda=None, boot="a"):
         self.port = free_port()
         self.tmp = tempfile.mkdtemp(prefix="winkitqemu")
         cmd = [find_qemu(), "-M", "pc", "-cpu", cpu, "-m", str(mem),
                "-display", "none", "-vga", "std", "-net", "none",
                "-rtc", "base=1988-11-30T12:00:00",
-               "-drive", f"file={floppy},format=raw,if=floppy,index=0",
-               "-boot", "a",
+               "-boot", boot,
                "-qmp", f"tcp:127.0.0.1:{self.port},server=on,wait=off"]
+        if floppy:
+            cmd += ["-drive", f"file={floppy},format=raw,if=floppy,index=0"]
+        if hda:
+            cmd += ["-drive", f"file={hda},format=raw,if=ide,index=0"]
         if snapshot:
             cmd.append("-snapshot")      # never write to the image file
         cmd += list(extra)

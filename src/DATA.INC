@@ -213,6 +213,10 @@ storefile db 'WKSTORE.WKX',0
 chainfile db 16 dup (0)                ; program to run when this one exits
 gewait db 0                            ; 0 wait for an event, 1/2 one tick only
 keydirty db 0                          ; dirty as it was before the key
+subopen db 0                           ; Programs list showing
+subhot db 0ffh                         ; highlighted program, FF = none
+progcount dw 0                         ; .WKX programs found by prog_scan
+progptr dw SUB_MAX dup (0)             ; their names in files[]
 
 cmdtab dw OFFSET c_help,OFFSET cmd_help
        dw OFFSET c_dir,OFFSET cmd_dir
@@ -356,11 +360,14 @@ mn_notes db 'Notes',0
 mn_system db 'System',0
 mn_term db 'WinKit',0
 mn_store db 'Store',0
+mn_progs db 'Programs',0
+s_arrow db '>',0
+s_noprogs db '(none)',0
 mn_shut db 'Shut Down...',0
 banner db 'V4.0',0
 logo db 'V4',0
 menuptr dw OFFSET mn_files,OFFSET mn_notes,OFFSET mn_system,OFFSET mn_term
-        dw OFFSET mn_store,OFFSET mn_shut
+        dw OFFSET mn_store,OFFSET mn_progs,OFFSET mn_shut
 
 ttl_files db 'Files - boot disk',0
 ttl_notes db 'Notes - NOTES.TXT',0

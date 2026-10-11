@@ -112,7 +112,7 @@ def main():
         click(330, 320)                  # OK on the welcome dialog
         check("mouse enters desktop", state()[0] == 1)
         click(30, 466)                   # Start button
-        click(100, 286)                  # Files in the Start menu
+        click(100, 258)                  # Files in the Start menu
         check("Files opens from the Start menu", state()[1] == 1)
         m.key("pgdn")
         shot("02-files-page-two")
@@ -212,7 +212,7 @@ def main():
               "CLOCK.WKX" in out)
         m.key("f1")                          # Files lists them: 10 per column
         time.sleep(1)
-        click(96 + 12 + 200 + 40, 20 + 64 + 8)   # DICE.WKX, the 11th file
+        click(96 + 12 + 200 + 40, 20 + 64 + 18 + 8)  # DICE.WKX, the 12th
         time.sleep(1.5)
         check("clicking a program in Files runs it", gui() == (1, "Dice"))
         m.key("esc")
@@ -222,12 +222,21 @@ def main():
         check("a text program started from Files gets the terminal",
               state()[2] == 4 and
               "Hello from a native WinKit program!" in term_text())
+        click(30, 466)                       # Start
+        click(100, 398)                      # Programs: its list opens
+        shot("10-programs")
+        click(178 + 60, 266 + 8 * 18 + 9)    # DICE, the 9th program of 10
+        time.sleep(1.5)
+        check("Start > Programs lists the installed programs and runs one",
+              gui() == (1, "Dice"))
+        m.key("esc")
+        time.sleep(1)
         run("window")                        # a program with its own window
         click(115 + 60, 93 + 30)             # its Quit button
         time.sleep(1)
         check("a windowed program gets its click and returns",
               "The window is closed." in term_text())
-        shot("10-terminal-final")
+        shot("11-terminal-final")
         out = run("dir")
         m.type("cls")
         m.key("ret")
@@ -248,7 +257,63 @@ def main():
         m.key("f6")
         out = run("type notes.txt")
         check("files survive the reboot", "Assembly GUI notes" in out)
-        shot("11-after-reboot")
+        shot("12-after-reboot")
+
+    # ---- Setup: install on an empty hard disk, then start from it ----
+    hda = ROOT / "out" / "test-hda.img"
+    with open(hda, "wb") as fh:
+        fh.truncate(16 * 1024 * 1024)
+    with Machine(str(ROOT / "out" / "winkit.img"), hda=str(hda),
+                 boot="order=ac") as m:
+        memory = Path(m.tmp) / "ram.bin"
+        wait_gui()
+        state_addr, term_addr = locate()
+        m.key("ret")
+        m.key("f6")
+        m.type("setup")
+        m.key("ret")
+        time.sleep(1.5)
+        check("Setup opens its window", gui() == (1, "WinKit Setup"))
+        m.key("ret")                         # Install
+        m.key("ret")                         # ...and again to confirm
+        time.sleep(1)
+        shot("13-setup")
+        m.key("esc")                         # read once the copy is over
+        deadline = time.time() + 180
+        while gui()[0]:
+            assert time.time() < deadline, "Setup did not finish"
+            time.sleep(1)
+        floppy = [d["device"] for d in m.qmp("query-block")
+                  if "floppy" in d["device"]][0]
+        m.qmp("eject", device=floppy, force=True)
+        m.qmp("system_reset")
+        time.sleep(3)
+        wait_gui()
+        state_addr, term_addr = locate()
+        check("with the floppy out, the machine starts WinKit from the "
+              "hard disk", state()[0] == 0)
+        m.key("ret")
+        m.key("f6")
+        out = run("dir")
+        check("the hard disk holds the system's files",
+              "SETUP.WKX" in out and "WKSTORE.WKX" in out)
+        run("echo on the hard disk > HD.TXT", wait=2)   # slower than a floppy
+        out = run("type hd.txt")
+        check("files can be written on the hard disk",
+              "on the hard disk" in out)
+        m.type("cls")
+        m.key("ret")
+        m.type("setup")
+        m.key("ret")
+        time.sleep(1.5)
+        shot("14-from-hard-disk")
+        m.key("ret")                         # must not offer to install
+        m.key("ret")
+        m.key("esc")
+        time.sleep(1.5)
+        check("Setup does nothing when WinKit already runs from the hard "
+              "disk", gui()[0] == 0 and "HD.TXT" in run("dir"))
+    hda.unlink()
 
     print(f"{checks}/{checks} WinKit checks passed; screenshots: {SHOTS}")
 

@@ -20,15 +20,18 @@ and the kernel's own FAT12 driver.
   bars, Start menu, taskbar with window buttons and a clock, desktop icons,
   minimize and close, flicker-free window dragging.
 - **Apps:** Files (lists the disk), Notes (a text editor that saves to disk),
-  System Properties, the WinKit terminal, and the Store.
+  System Properties, the WinKit terminal, and the Store. Start > Programs
+  lists every program on the disk and runs it with a click.
 - **WinKit terminal:** `help dir type echo copy ren del cls ver time mem
   reboot exit`, `echo TEXT > FILE`, and it runs native `.WKX` programs.
-- **FAT12 driver:** read, write, delete and rename on a 1.44 MB floppy image,
-  through BIOS INT 13h.
+- **Setup:** `SETUP.WKX` (Start > Programs > SETUP) installs WinKit on a
+  hard disk, which then boots without the floppy.
+- **FAT12 driver:** read, write, delete and rename on a 1.44 MB volume (the
+  floppy image, or the hard disk after Setup), through BIOS INT 13h.
 - **Native programs:** flat binaries that talk to the system through
   `INT 80h`: terminal text and keys, saving a file, and a window of their
-  own with drawing and mouse clicks. Click a `.WKX` in Files to run it, or
-  type its name in the terminal. Examples are in [`src/progs`](src/progs).
+  own with drawing and mouse clicks. Run one from Start > Programs, by
+  clicking it in Files, or by typing its name in the terminal. Examples are in [`src/progs`](src/progs).
 - **WinKit Store:** a windowed program (`WKSTORE.WKX`; Start > Store, the
   desktop icon or F7) that downloads windowed programs from a store server
   on the host, installs them on the disk and runs them. There is no network: the link is the

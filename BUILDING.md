@@ -9,6 +9,31 @@
 
 Add `--snapshot` to `run.py` to discard disk writes when QEMU exits.
 
+## Installing on a hard disk
+
+    python scripts/run.py --hda out/disk.img           # floppy + an empty hard disk
+    python scripts/run.py --hda out/disk.img --boot c  # afterwards: hard disk only
+
+`--hda` attaches a raw hard disk image and creates it (empty, 16 MB) if the
+file does not exist. In WinKit, open Start > Programs > SETUP (or type
+`setup` in the terminal) and press Install twice: once to ask, once to
+confirm. Setup (`src/progs/SETUP.ASM`) copies the disk WinKit was started
+from, sector by sector, to the first hard disk and writes that disk's
+geometry into the boot sector. It takes a few seconds. With `--boot c` the
+floppy is left out of the machine and WinKit starts from the hard disk,
+with everything that was on the floppy at the time, installed programs
+included.
+
+* **Everything on the hard disk is erased.** Setup writes from the first
+  sector on and makes no partition table, so the whole disk becomes the
+  WinKit disk and nothing else can share it.
+* The volume on the hard disk is still the 1.44 MB FAT12 volume; the rest
+  of the disk is not used.
+* Setup refuses when there is no hard disk, when it is smaller than
+  1.44 MB, or when WinKit is already running from the hard disk.
+* Like everything here this is tested in QEMU only. Do not point it at a
+  real disk you care about.
+
 ## What is on the disk
 
 | Where | What |
@@ -40,7 +65,7 @@ loop and `INCLUDE`s the rest.
 | `TERM.INC` | the WinKit terminal, its commands, and the INT 80h program interface |
 | `PGUI.INC` | the INT 80h window calls: a program's window, drawing, key and mouse events |
 | `INPUT.INC`, `POWER.INC` | mouse callback, keyboard, dispatch; restart and power off |
-| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, and the Store, `WKSTORE` |
+| `progs/*.ASM` | programs on the disk: `HELLO`, `HI`, `COUNT`, `KEYS`, `FIB`, `REVERSE`, `WINDOW`, the Store `WKSTORE`, and the hard disk installer `SETUP` |
 
 The desktop uses VGA mode 12h (640x480) with its own 16-colour palette and
 writes straight to planar video memory. PS/2 mouse input comes from the BIOS
@@ -56,6 +81,7 @@ it uncovered; typing in WinKit redraws only the terminal.
 | Control | Action |
 |---|---|
 | Enter on the welcome dialog | Enter the desktop |
+| Start > Programs | Lists the `.WKX` programs on the disk (up to 16); click one to run it |
 | Mouse | Start menu, taskbar buttons, window focus, title-bar dragging, minimize and close buttons, double-click a desktop icon, click a `.WKX` in Files to run it |
 | Arrow keys + Space | Move the pointer and activate its target without a mouse |
 | F1 / F2 / F3 / F6 | Open Files / Notes / System / WinKit |
@@ -117,9 +143,10 @@ by typing `wkstore` in the terminal.
 
 While the Store is open it is the only thing running: like every WinKit
 program it has the machine to itself, so the other windows do not respond
-until it is closed. An installed program is started with Run in the Store,
-by clicking it in Files (press Refresh if it is not listed yet), or by name
-in the terminal.
+until it is closed. An installed program stays on the disk: start it any
+time from **Start > Programs**, by clicking it in Files (press Refresh if
+it is not listed yet), or by name in the terminal. Run in the Store starts
+it straight away.
 
 **The Store only carries windowed programs.** The server leaves out any
 source that never opens a window (it looks for `mov ah,10h` / `int 80h` in
