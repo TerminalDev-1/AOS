@@ -1,3 +1,6 @@
 out/
 __pycache__/
 *.pyc
+aos/target/
+aos/kernel/target/
+aos/out/

@@ -1,102 +1,42 @@
-# WinKit
+# AOS
 
-A small standalone operating system written in 16-bit x86 assembly: a
-Windows 98-style desktop and its own terminal, **WinKit**. It boots from its
-own boot sector and shows its own boot screen. There is no DOS underneath; disk access goes through the BIOS
-and the kernel's own FAT12 driver.
+AOS is an experimental 64-bit x86-64 operating system that boots through UEFI.
+It has a freestanding Rust kernel and a full-colour desktop with AOS's own
+purple/blue wallpaper, rounded light windows, an application taskbar and a
+searchable Start menu. It supports keyboard and mouse input, a FAT12
+filesystem, Files, Notes, Write,
+Terminal, Programs and a small serial-backed Store. Native `.AIS` applications
+use a versioned x86-64 format and run in ring 3.
 
-![WinKit: desktop, files, terminal and native programs](docs/overview.png)
+![AOS desktop](docs/aos-desktop.png)
 
-> ## Maintenance status
->
-> **I am not maintaining this project.** I update it whenever I feel like it.
-> There may be the occasional minor update, but when an update does come it
-> will usually be a substantial one. There is no schedule and no promise of
-> support.
+The Start menu and taskbar use AOS's light, rounded design. Open Start with
+the AOS button, the Windows key or Ctrl+Esc; search for an app or launch one
+of the pinned apps. [View the Start menu](docs/aos-start-menu.png).
 
-## What it has
+This is the sole AOS edition in this repository. The former 16-bit BIOS source,
+assembler, applications and build path have been removed. The current build
+generates a bootable UEFI ISO with a native FAT12 data seed; an installed-disk
+mode provides persistent saves. The live ISO keeps saves in RAM until shutdown.
 
-- **Desktop:** widescreen under QEMU; teal wallpaper, silver 3D-bevelled windows with gradient title
-  bars, Start menu, taskbar with window buttons and a clock, desktop icons,
-  minimize and close, flicker-free window dragging.
-- **Boot screen:** the logo and a progress bar while the system starts,
-  then the welcome dialog.
-- **File Manager:** the files on the disk with their sizes and kinds, and a
-  gauge of the free disk space. Select a file and Open, Copy, Rename or
-  Delete it; a double click runs a program or shows a text file.
-- **Apps:** the File Manager, Notes (a text editor that saves to disk),
-  System Properties, the WinKit terminal, and the Store. Start > Programs
-  lists every program on the disk and runs it with a click, and every
-  program you install gets a shortcut on the desktop.
-- **WinKit terminal:** `help dir type echo copy ren del cls ver time mem
-  reboot exit`, `echo TEXT > FILE`, and it runs native `.WKX` programs.
-- **Setup:** `SETUP.WKX` (desktop shortcut, or Start > Programs > SETUP)
-  installs WinKit on a hard disk and can restart straight into it; the
-  hard disk then boots without the floppy.
-- **FAT12 driver:** read, write, delete and rename on a 1.44 MB volume (the
-  floppy image, or the hard disk after Setup), through BIOS INT 13h.
-- **Native programs:** flat binaries that talk to the system through
-  `INT 80h`: terminal text and keys, saving a file, and a window of their
-  own with drawing and mouse clicks. Run one from Start > Programs, by
-  double-clicking it in the File Manager, or by typing its name in the terminal. Examples are in [`src/progs`](src/progs).
-- **WinKit Store:** a windowed program (`WKSTORE.WKX`; Start > Store, the
-  desktop icon or F7) that downloads windowed programs from a store server
-  on the host, installs them on the disk and runs them. There is no network: the link is the
-  serial port (`python scripts/run.py --store`). The programs on offer are
-  in [`store`](store).
+Build and run from the repository root:
 
-## Try it
+```text
+rustup target add x86_64-unknown-none x86_64-unknown-uefi
+python -m pip install -r aos/requirements-iso.txt
+python aos/build.py
+python aos/test.py
+python aos/test_iso.py
+python aos/run.py --store
+```
 
-You need Python 3.8+ and [QEMU](https://www.qemu.org). Nothing else: WinKit
-comes with its own assembler ([`scripts/wkasm.py`](scripts/wkasm.py)), so
-there is no third-party tool chain.
+The build produces `aos/out/aos.iso`. See
+[BUILDING.md](BUILDING.md) for run modes, [the architecture notes](docs/ARCHITECTURE.md)
+for implementation details, and [AIS programming](docs/AIS-PROGRAMMING.md)
+for native applications.
 
-    python scripts/mkimage.py        # assemble everything -> out/winkit.img
-    python scripts/run.py            # boot it in a QEMU window
-    python scripts/test.py           # boot it headless and check every feature
-    python scripts/test_wkasm.py     # self-test of the assembler
-    python scripts/showcase.py       # screenshots of every feature
+AOS is tested in QEMU with EDK2 firmware. Real hardware is untested. Its
+desktop still uses a software framebuffer renderer, and its application ABI is
+small and experimental.
 
-Under QEMU, WinKit's display driver makes the desktop widescreen (848x480)
-so it fills the emulator window (on other video cards it is 640x480), and
-its mouse driver keeps the pointer under your own, so there is no mouse
-grab and every corner of the screen is reachable. The
-system calls itself **WinKit-preview**.
-
-See [BUILDING.md](BUILDING.md) for the controls, the terminal and how the code
-is organised.
-
-## Writing programs
-
-> **WinKit is not DOS and will never be DOS.** AI agents and newcomers: read
-> [AGENTS.md](AGENTS.md) first, so you do not assume DOS features that do not
-> exist here.
-
-WinKit runs its own native programs (`.WKX`). The complete guide, written for
-both people and AI agents, is
-[docs/WKX-PROGRAMMING.md](docs/WKX-PROGRAMMING.md): the execution
-environment, every system call, the assembler dialect, how to build and test,
-and worked examples. Drop a `.ASM` into [`src/progs`](src/progs) and rebuild.
-
-## Limits
-
-- One-level volume (no folders); files up to 52 KB; Notes holds 240 characters.
-- WinKit programs cannot be interrupted; a program that never exits needs a
-  reset.
-- Existing DOS programs do not run: they need DOS's INT 21h services, which
-  WinKit deliberately does not provide.
-- Tested in QEMU only, not on physical hardware. The image is prepared to
-  boot a real PC from a USB stick or floppy (legacy BIOS); see "Running on
-  a real PC" in [BUILDING.md](BUILDING.md). Nobody has tried it yet.
-
-## License
-
-Copyright (C) 2026 TerminalDev-1.
-
-WinKit is free software, released under the **GNU General Public License,
-version 3**. See [LICENSE](LICENSE). It comes with no warranty.
-
-No code from Microsoft or from any DOS is included. The assembler
-(`scripts/wkasm.py`) is original; it was checked against Microsoft's MASM 5.10
-by assembling the whole system with both and comparing the output byte for
-byte.
+The code is distributed under the terms in [LICENSE](LICENSE).
